@@ -1,4 +1,4 @@
 *.csv
-*.wav
+*_preprocessed.wav
 *.json
 *.txt
