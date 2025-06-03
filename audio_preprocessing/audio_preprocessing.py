@@ -1,4 +1,10 @@
-import pydub
+
+
+def resample(sound, hz = 16000):
+    '''
+    sound is a pydub sound
+    '''
+    return sound.set_frame_rate(hz)
 
 def detect_leading_silence(sound, silence_threshold=-50.0, chunk_size=10):
     '''

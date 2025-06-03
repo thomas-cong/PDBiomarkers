@@ -83,7 +83,7 @@ def calculate_hull_area(data):
     return hull.volume
 
 '''
-Given audio files, calculate their fundamental frequency (mean, median, std, min, max)
+Given audio file, calculate their fundamental frequency (mean, median, std, min, max)
 '''
 def calculate_fundamental_frequency(audio_path):
     sound = parselmouth.Sound(audio_path)
@@ -93,9 +93,16 @@ def calculate_fundamental_frequency(audio_path):
     return [np.mean(voiced_frequencies), np.median(voiced_frequencies), np.std(voiced_frequencies), np.min(voiced_frequencies), np.max(voiced_frequencies)]
 
 '''
-Given audio files, calculate their intensity (mean, median, std, min, max)
+Given audio file, calculate their intensity (mean, median, std, min, max)
 '''
 def calculate_intensity(audio_path):
     sound = parselmouth.Sound(audio_path)
     intensity = sound.to_intensity()
     return [np.mean(intensity), np.median(intensity), np.std(intensity), np.min(intensity), np.max(intensity)]
+'''
+Given audio file, calculate the harmonicity (mean, median, std, min, max)
+'''
+def calculate_harmonicity(audio_path):
+    sound = parselmouth.Sound(audio_path)
+    harmonicity = sound.to_harmonicity()
+    return [np.mean(harmonicity), np.median(harmonicity), np.std(harmonicity), np.min(harmonicity), np.max(harmonicity)]

@@ -1,3 +1,5 @@
+aavs
+hull_area
 avg_syllable_duration
 speech_rate_syllable
 speech_rate_word
@@ -7,12 +9,15 @@ ff_median
 ff_std
 ff_min
 ff_max
-aavs
-hull_area
 inten_mean
 inten_median
 inten_std
 inten_min
 inten_max
+har_mean
+har_median
+har_std
+har_min
+har_max
 avg_word_length
 avg_syllables_per_word

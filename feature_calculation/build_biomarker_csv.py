@@ -24,7 +24,8 @@ def process_audio_file(audio_path):
     
     # Preprocess the audio file
     audioSeg = pydub.AudioSegment.from_file(audio_path, format="wav")
-    trimmed_audio = audio_preprocessing.trim_leading_and_lagging_silence(audioSeg)
+    resampled_audio = audio_preprocessing.resample(audioSeg)
+    trimmed_audio = audio_preprocessing.trim_leading_and_lagging_silence(resampled_audio)
     normalized_audio = audio_preprocessing.match_target_amplitude(trimmed_audio, target_dBFS=-20)
     # Create a temporary trimmed file path
     preprocessed_path = os.path.join(os.path.dirname(audio_path), f"{filename}_preprocessed.wav")
@@ -65,6 +66,12 @@ def process_audio_file(audio_path):
         metrics['inten_std'] = inten[2]
         metrics['inten_min'] = inten[3]
         metrics['inten_max'] = inten[4]
+        harm = audio_features.calculate_harmonicity(preprocessed_path)
+        metrics['harm_mean'] = harm[0]
+        metrics['harm_median'] = harm[1]
+        metrics['harm_std'] = harm[2]
+        metrics['harm_min'] = harm[3]
+        metrics['harm_max'] = harm[4]
 
         metrics['avg_word_length'] = text_features.avg_word_length(text_path)
         metrics['avg_syllables_per_word'] = text_features.avg_syllables_per_word(text_path)
