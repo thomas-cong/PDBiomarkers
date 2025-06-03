@@ -8,7 +8,8 @@ model = whisper.load_model("base")
 
 def transcribe_audio(audio_path):    
     transcribed_audio = model.transcribe(audio_path)
-    # Assuming you have a variable for the text file folder
+# Create the Text Files directory if it doesn't exist
+    os.makedirs("./Text Files", exist_ok=True)
     text_file_folder = "./Text Files"
 
     # Extract just the filename without path and extension
@@ -19,12 +20,14 @@ def transcribe_audio(audio_path):
         f.write(transcribed_audio['text'])
     return os.path.join(text_file_folder, filename + '.txt')
 
-def align_audio(audio_path, output_path="alignment.json"):
+def align_audio(audio_path):
+    # Create the Alignment Files directory if it doesn't exist
+    os.makedirs("./Alignment Files", exist_ok=True)
     result = model.transcribe(audio_path, word_timestamps=True)
     segments = result["segments"]
-    with open(output_path, "w", encoding="utf-8") as f:
+    with open(os.path.join("./Alignment Files", os.path.basename(audio_path).replace('.wav', '') + '.json'), "w", encoding="utf-8") as f:
         json.dump(segments, f, ensure_ascii=False, indent=2)
-    print(f"Alignment data saved to {output_path}")
+    print(f"Alignment data saved to {os.path.join("./Alignment Files", os.path.basename(audio_path).replace('.wav', '') + '.json')}")
 
 import re
 

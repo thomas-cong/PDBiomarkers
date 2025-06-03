@@ -35,7 +35,7 @@ def process_audio_file(audio_path):
     try:
         # Get alignment data
         alignment_path = os.path.join(os.path.dirname(audio_path), f"{filename}_alignment.json")
-        transcription_functions.align_audio(preprocessed_path, output_path=alignment_path)
+        transcription_functions.align_audio(preprocessed_path)
         
         # Load the alignment data
         with open(alignment_path, "r", encoding="utf-8") as f:
