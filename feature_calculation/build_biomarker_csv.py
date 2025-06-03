@@ -2,10 +2,9 @@
 import os
 import json
 import pandas as pd
-import transcriptionFunctions
-import audioFeatures
-import audioPreprocessing
 import pydub
+from . import transcription_functions, audio_features, text_features
+from audio_preprocessing import audio_preprocessing
 
 def process_audio_file(audio_path):
     """
@@ -25,55 +24,55 @@ def process_audio_file(audio_path):
     
     # Preprocess the audio file
     audioSeg = pydub.AudioSegment.from_file(audio_path, format="wav")
-    trimmed_audio = audioPreprocessing.trimLeadingAndLaggingSilence(audioSeg)
-    normalized_audio = audioPreprocessing.normalize_audio(trimmed_audio)
-    # normalized_audio = trimmed_audio
+    trimmed_audio = audio_preprocessing.trim_leading_and_lagging_silence(audioSeg)
+    normalized_audio = audio_preprocessing.match_target_amplitude(trimmed_audio, target_dBFS=-20)
     # Create a temporary trimmed file path
     preprocessed_path = os.path.join(os.path.dirname(audio_path), f"{filename}_preprocessed.wav")
     normalized_audio.export(preprocessed_path, format="wav")
+    text_path = transcription_functions.transcribe_audio(preprocessed_path)
     print(f"Preprocessed audio saved to {preprocessed_path}")
     
     try:
         # Get alignment data
         alignment_path = os.path.join(os.path.dirname(audio_path), f"{filename}_alignment.json")
-        transcriptionFunctions.align_audio(preprocessed_path, output_path=alignment_path)
+        transcription_functions.align_audio(preprocessed_path, output_path=alignment_path)
         
         # Load the alignment data
         with open(alignment_path, "r", encoding="utf-8") as f:
             segments = json.load(f)
         
-        # Calculate metrics from transcriptionFunctions
-        interword_pauses = transcriptionFunctions.calculate_interword_pauses(segments)
+        # Calculate metrics from transcription_functions
+        interword_pauses = transcription_functions.calculate_interword_pauses(segments)
         avg_pause_duration = sum(interword_pauses) / len(interword_pauses) if interword_pauses else 0
-        
-        metrics['avg_syllable_duration'] = transcriptionFunctions.average_syllable_duration(segments)
-        metrics['speech_rate_syllable'] = transcriptionFunctions.speech_rate(segments, by='syllable')
-        metrics['speech_rate_word'] = transcriptionFunctions.speech_rate(segments, by='word')
+        # Extract formant data and calculate AAVS and hull area
+        formant_data = audio_features.generate_formant_data(preprocessed_path)
+        bark_formant_data = formant_data[["F1(Bark)", "F2(Bark)"]]
+        metrics['aavs'] = audio_features.calculate_aavs(bark_formant_data)
+        metrics['hull_area'] = audio_features.calculate_hull_area(bark_formant_data)
+        metrics['avg_syllable_duration'] = transcription_functions.average_syllable_duration(segments)
+        metrics['speech_rate_syllable'] = transcription_functions.speech_rate(segments, by='syllable')
+        metrics['speech_rate_word'] = transcription_functions.speech_rate(segments, by='word')
         metrics['avg_pause_duration'] = avg_pause_duration
-        ff = audioFeatures.calculateFundamentalFrequency(preprocessed_path)
+        ff = audio_features.calculate_fundamental_frequency(preprocessed_path)
         metrics['ff_mean'] = ff[0]
         metrics['ff_median'] = ff[1]
         metrics['ff_std'] = ff[2]
         metrics['ff_min'] = ff[3]
         metrics['ff_max'] = ff[4]
-        inten = audioFeatures.calculateIntensity(preprocessed_path)
+        inten = audio_features.calculate_intensity(preprocessed_path)
         metrics['inten_mean'] = inten[0]
         metrics['inten_median'] = inten[1]
         metrics['inten_std'] = inten[2]
         metrics['inten_min'] = inten[3]
         metrics['inten_max'] = inten[4]
-        # Extract formant data and calculate AAVS and hull area
-        formant_data = audioFeatures.generateFormantData(preprocessed_path)
-        bark_formant_data = formant_data[["F1(Bark)", "F2(Bark)"]]
-        
-        metrics['aavs'] = audioFeatures.calculateAAVS(bark_formant_data)
-        metrics['hull_area'] = audioFeatures.calculateHullArea(bark_formant_data)
+
+        metrics['avg_word_length'] = text_features.avg_word_length(text_path)
+        metrics['avg_syllables_per_word'] = text_features.avg_syllables_per_word(text_path)
         
     except Exception as e:
         print(f"Error processing {filename}: {str(e)}")
-        feature_list = ['avg_syllable_duration', 'speech_rate_syllable', 'speech_rate_word', 
-                      'avg_pause_duration', 'ff_mean', 'ff_median', 'ff_std', 'ff_min', 'ff_max',
-                      'aavs', 'hull_area', 'inten_mean', 'inten_median', 'inten_std', 'inten_min', 'inten_max']
+        with open("feature_list.txt", "r") as f:
+            feature_list = f.read().splitlines()
         # Fill missing metrics with None
         for metric in feature_list:
             if metric not in metrics:
@@ -84,7 +83,7 @@ def process_audio_file(audio_path):
         
     return metrics
 
-def metrics_to_csv(csv_path, audio_files=None, audio_dir=None):
+def build_csv(csv_path, audio_files=None, audio_dir=None):
 
     """
     Generate a CSV file with metrics from transcriptionFunctions and formantExtraction

@@ -19,7 +19,7 @@ def extract_formants(audio_path, time_step = 0.05, max_number_of_formants = 5):
 '''
 Given a frequency in Hz, convert it to Bark scale
 '''
-def barkTransform(hz):
+def bark_transform(hz):
     bark = ((26.81*hz)/(1960+hz)) - 0.53
     if bark < 2.0:
         return bark + 0.15*(2-bark)
@@ -29,7 +29,7 @@ def barkTransform(hz):
 '''
 Given an audio path, generate a dataframe with bark formant data, and hz valued data (removing outliers)
 '''
-def generateFormantData(audio_path):
+def generate_formant_data(audio_path):
     # Extract formant data into a table
     formant_contour = extract_formants(audio_path, time_step = 0.01)
     times = np.arange(formant_contour.start_time, formant_contour.end_time, formant_contour.time_step)
@@ -43,8 +43,8 @@ def generateFormantData(audio_path):
     # get timestamps with full formant data
     full_formant_df = raw_formant_df[(raw_formant_df["F2(Hz)"] > 0) & (raw_formant_df["F1(Hz)"] > 0)]
     bark_transformed_df = full_formant_df.copy()
-    bark_transformed_df["F1(Bark)"] = bark_transformed_df["F1(Hz)"].map(barkTransform)
-    bark_transformed_df["F2(Bark)"] = bark_transformed_df["F2(Hz)"].map(barkTransform)
+    bark_transformed_df["F1(Bark)"] = bark_transformed_df["F1(Hz)"].map(bark_transform)
+    bark_transformed_df["F2(Bark)"] = bark_transformed_df["F2(Hz)"].map(bark_transform)
     bark_transformed_df.drop(["F1(Hz)", "F2(Hz)"], axis=1, inplace=True)
     bark_transformed_df.reset_index(drop=True, inplace=True)
 
@@ -66,7 +66,7 @@ def generateFormantData(audio_path):
 '''
 Given a dataframe with only bark formant data, calculate the AAVS (Standard Deviation of the Covariance Matrix)
 '''
-def calculateAAVS(data):
+def calculate_aavs(data):
     cov_matrix = np.cov(data, rowvar=False)
     det_cov = np.linalg.det(cov_matrix)
     sgv = np.sqrt(det_cov)
@@ -75,7 +75,7 @@ def calculateAAVS(data):
 '''
 Given a dataframe with only bark formant data, calculate the hull area of the clusters
 '''
-def calculateHullArea(data):
+def calculate_hull_area(data):
     kmeans = KMeans(n_clusters = 6, random_state = 0, n_init="auto")
     kmeans.fit(data)
     centers = kmeans.cluster_centers_
@@ -85,7 +85,7 @@ def calculateHullArea(data):
 '''
 Given audio files, calculate their fundamental frequency (mean, median, std, min, max)
 '''
-def calculateFundamentalFrequency(audio_path):
+def calculate_fundamental_frequency(audio_path):
     sound = parselmouth.Sound(audio_path)
     pitch = sound.to_pitch()
     frequencies = pitch.selected_array['frequency']
@@ -95,8 +95,7 @@ def calculateFundamentalFrequency(audio_path):
 '''
 Given audio files, calculate their intensity (mean, median, std, min, max)
 '''
-def calculateIntensity(audio_path):
+def calculate_intensity(audio_path):
     sound = parselmouth.Sound(audio_path)
     intensity = sound.to_intensity()
     return [np.mean(intensity), np.median(intensity), np.std(intensity), np.min(intensity), np.max(intensity)]
-    

@@ -1,4 +1,4 @@
-from pydub import AudioSegment, effects
+import pydub
 
 def detect_leading_silence(sound, silence_threshold=-50.0, chunk_size=10):
     '''
@@ -16,7 +16,7 @@ def detect_leading_silence(sound, silence_threshold=-50.0, chunk_size=10):
 
     return trim_ms
 
-def trimLeadingAndLaggingSilence(audioSegment):
+def trim_leading_and_lagging_silence(audioSegment):
     sound = audioSegment
 
     start_trim = detect_leading_silence(sound)
@@ -25,8 +25,7 @@ def trimLeadingAndLaggingSilence(audioSegment):
     trimmed_sound = sound[start_trim: duration-end_trim]
     return trimmed_sound
 
-def normalize_audio(audioSegment):
+def match_target_amplitude(audioSegment, target_dBFS):
     sound = audioSegment
-    normalized_sound = effects.normalize(sound)
-    return normalized_sound
-
+    change_in_dBFS = target_dBFS - sound.dBFS
+    return sound.apply_gain(change_in_dBFS)

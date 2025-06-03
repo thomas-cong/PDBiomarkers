@@ -17,6 +17,7 @@ def transcribe_audio(audio_path):
     # Create the text file in the text file folder
     with open(os.path.join(text_file_folder, filename + '.txt'), 'w') as f:
         f.write(transcribed_audio['text'])
+    return os.path.join(text_file_folder, filename + '.txt')
 
 def align_audio(audio_path, output_path="alignment.json"):
     result = model.transcribe(audio_path, word_timestamps=True)
