@@ -24,12 +24,12 @@ def process_audio_file(audio_path):
     
     # Preprocess the audio file
     audioSeg = pydub.AudioSegment.from_file(audio_path, format="wav")
-    resampled_audio = audio_preprocessing.resample(audioSeg)
-    trimmed_audio = audio_preprocessing.trim_leading_and_lagging_silence(resampled_audio)
-    normalized_audio = audio_preprocessing.match_target_amplitude(trimmed_audio, target_dBFS=-20)
+    audioSeg = audio_preprocessing.resample(audioSeg)
+    audioSeg = audio_preprocessing.trim_leading_and_lagging_silence(audioSeg)
+    audioSeg = audio_preprocessing.match_target_amplitude(audioSeg, target_dBFS=-20)
     # Create a temporary trimmed file path
     preprocessed_path = os.path.join(os.path.dirname(audio_path), f"{filename}_preprocessed.wav")
-    normalized_audio.export(preprocessed_path, format="wav")
+    audioSeg.export(preprocessed_path, format="wav")
     text_path = transcription_functions.transcribe_audio(preprocessed_path)
     print(f"Preprocessed audio saved to {preprocessed_path}")
     
