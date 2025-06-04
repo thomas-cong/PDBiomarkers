@@ -35,7 +35,11 @@ def process_audio_file(audio_path):
     
     try:
         # Get alignment data
-        alignment_path = os.path.join(os.path.dirname(audio_path), f"{filename}_alignment.json")
+        alignment_path = preprocessed_path.split("/")
+        alignment_path[-2] = "Alignment Files"
+        alignment_path = "/".join(alignment_path)
+        alignment_path = alignment_path.replace(".wav", ".json")
+        print("Alignment_Path: ", alignment_path)
         transcription_functions.align_audio(preprocessed_path)
         
         # Load the alignment data
@@ -75,6 +79,16 @@ def process_audio_file(audio_path):
 
         metrics['avg_word_length'] = text_features.avg_word_length(text_path)
         metrics['avg_syllables_per_word'] = text_features.avg_syllables_per_word(text_path)
+        shimmer = audio_features.calculate_shimmer(preprocessed_path)
+        metrics['shimmer_local'] = shimmer[0]
+        metrics['shimmer_local_db'] = shimmer[1]
+        metrics['shimmer_apq3'] = shimmer[2]
+        metrics['shimmer_apq5'] = shimmer[3]
+        jitter = audio_features.calculate_jitter(preprocessed_path)
+        metrics['jitter_local'] = jitter[0]
+        metrics['jitter_local_db'] = jitter[1]
+        metrics['jitter_apq3'] = jitter[2]
+        metrics['jitter_apq5'] = jitter[3]
         
     except Exception as e:
         print(f"Error processing {filename}: {str(e)}")
@@ -84,9 +98,6 @@ def process_audio_file(audio_path):
         for metric in feature_list:
             if metric not in metrics:
                 metrics[metric] = None
-    
-    finally:
-        pass
         
     return metrics
 

@@ -4,6 +4,7 @@ import pandas as pd
 from sklearn.mixture import GaussianMixture
 from sklearn.cluster import KMeans
 from scipy.spatial import ConvexHull
+from parselmouth.praat import call
 
 '''
 Given an audio path, extract formant data using parselmouth
@@ -90,6 +91,7 @@ def calculate_fundamental_frequency(audio_path):
     pitch = sound.to_pitch()
     frequencies = pitch.selected_array['frequency']
     voiced_frequencies = frequencies[frequencies > 0]
+    # average fundamental frequency (estimate of pitch over time)
     return [np.mean(voiced_frequencies), np.median(voiced_frequencies), np.std(voiced_frequencies), np.min(voiced_frequencies), np.max(voiced_frequencies)]
 
 '''
@@ -98,6 +100,7 @@ Given audio file, calculate their intensity (mean, median, std, min, max)
 def calculate_intensity(audio_path):
     sound = parselmouth.Sound(audio_path)
     intensity = sound.to_intensity()
+    # average intensity (estimate of amplitude over time)
     return [np.mean(intensity), np.median(intensity), np.std(intensity), np.min(intensity), np.max(intensity)]
 '''
 Given audio file, calculate the harmonicity (mean, median, std, min, max)
@@ -105,4 +108,57 @@ Given audio file, calculate the harmonicity (mean, median, std, min, max)
 def calculate_harmonicity(audio_path):
     sound = parselmouth.Sound(audio_path)
     harmonicity = sound.to_harmonicity()
+    # harmonic (voiced speech) to noise ratio
     return [np.mean(harmonicity), np.median(harmonicity), np.std(harmonicity), np.min(harmonicity), np.max(harmonicity)]
+
+def calculate_shimmer(audio_path):
+    '''
+    Given audio file, calculate their shimmer
+    Shimmer: represents the change in loudness of each period
+    Period: duration of one complete cycle of a soundwave
+    '''
+    sound = parselmouth.Sound(audio_path)
+    max_freq = calculate_fundamental_frequency(audio_path)[-1]
+    min_freq = calculate_fundamental_frequency(audio_path)[-2]
+    point_process = parselmouth.praat.call(sound, "To PointProcess (periodic, cc)", min_freq, max_freq)
+    # parselmouth.praat.call([sound, point_process], "Get shimmer (local)", 
+    # minimum_pitch, 
+    # maximum_period, 
+    # maximum_period_factor, 
+    # maximum_amplitude_factor, 
+    # minimum_amplitude, 
+    # maximum_amplitude, 
+    # maximum_silence
+    # average difference in amplitude between consecutive periods/average amplitude
+    localShimmer =  call([sound, point_process], "Get shimmer (local)", 0, 0, 0.0001, 0.02, 1.3, 1.6)
+    # average difference in amplitude between consecutive periods (absolute)
+    localdbShimmer = call([sound, point_process], "Get shimmer (local_dB)", 0, 0, 0.0001, 0.02, 1.3, 1.6)
+    # Amplitude pertubation quotient over 3 periods (period and its two neighbors) / average amplitude
+    apq3Shimmer = call([sound, point_process], "Get shimmer (apq3)", 0, 0, 0.0001, 0.02, 1.3, 1.6)
+    # Amplitude pertubation quotient over 5 periods (period and its four neighbors) / average amplitude
+    aqpq5Shimmer = call([sound, point_process], "Get shimmer (apq5)", 0, 0, 0.0001, 0.02, 1.3, 1.6)
+    return [localShimmer, localdbShimmer, apq3Shimmer, aqpq5Shimmer]
+
+    
+def calculate_jitter(audio_path):
+    '''
+    Given audio file, calculate jitter features.
+    Jitter: represents the change in duration of each period.
+    Period: duration of one complete cycle of a soundwave.
+    '''
+    sound = parselmouth.Sound(audio_path)
+    max_freq = calculate_fundamental_frequency(audio_path)[-1]
+    min_freq = calculate_fundamental_frequency(audio_path)[-2]
+    point_process = call(sound, "To PointProcess (periodic, cc)", min_freq, max_freq)
+    # Jitter metrics are called on the PointProcess object, not [sound, point_process]
+    # Praat signature: (time range start [s], time range end [s], min period [s], max period [s], max period factor)
+    # Defaults: 0, 0, 0.0001, 0.02, 1.3
+    jitter_local = call(point_process, "Get jitter (local)", 0, 0, 0.0001, 0.02, 1.3)
+    # average difference in period duration between consecutive periods / average period duration
+    jitter_local_absolute = call(point_process, "Get jitter (local, absolute)", 0, 0, 0.0001, 0.02, 1.3)
+    # average absolute difference in period duration (in seconds)
+    jitter_rap = call(point_process, "Get jitter (rap)", 0, 0, 0.0001, 0.02, 1.3)
+    # relative average perturbation (mean diff with two neighbors)
+    jitter_ppq5 = call(point_process, "Get jitter (ppq5)", 0, 0, 0.0001, 0.02, 1.3)
+    # five-point period perturbation quotient (mean diff with four neighbors)
+    return [jitter_local, jitter_local_absolute, jitter_rap, jitter_ppq5]

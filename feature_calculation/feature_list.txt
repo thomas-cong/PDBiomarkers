@@ -19,5 +19,13 @@ har_median
 har_std
 har_min
 har_max
+shimmer_local
+shimmer_local_db
+shimmer_apq3
+shimmer_apq5
+jitter_local
+jitter_local_db
+jitter_apq3
+jitter_apq5
 avg_word_length
 avg_syllables_per_word
