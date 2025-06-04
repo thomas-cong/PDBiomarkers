@@ -72,10 +72,9 @@ def process_audio_file(audio_path):
         metrics['inten_max'] = inten[4]
         harm = audio_features.calculate_harmonicity(preprocessed_path)
         metrics['harm_mean'] = harm[0]
-        metrics['harm_median'] = harm[1]
-        metrics['harm_std'] = harm[2]
-        metrics['harm_min'] = harm[3]
-        metrics['harm_max'] = harm[4]
+        metrics['harm_std'] = harm[1]
+        metrics['harm_min'] = harm[2]
+        metrics['harm_max'] = harm[3]
 
         metrics['avg_word_length'] = text_features.avg_word_length(text_path)
         metrics['avg_syllables_per_word'] = text_features.avg_syllables_per_word(text_path)

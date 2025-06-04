@@ -107,9 +107,13 @@ Given audio file, calculate the harmonicity (mean, median, std, min, max)
 '''
 def calculate_harmonicity(audio_path):
     sound = parselmouth.Sound(audio_path)
-    harmonicity = sound.to_harmonicity()
+    harmonicity = call(sound, "To Harmonicity (cc)", 0.01, 75, 0.1, 1.0)
     # harmonic (voiced speech) to noise ratio
-    return [np.mean(harmonicity), np.median(harmonicity), np.std(harmonicity), np.min(harmonicity), np.max(harmonicity)]
+    mean = call(harmonicity, "Get mean", 0,0)
+    std = call(harmonicity, "Get standard deviation", 0,0)
+    min = call(harmonicity, "Get minimum", 0,0, "parabolic")
+    max = call(harmonicity, "Get maximum", 0,0, "parabolic")
+    return [mean, std, min, max]
 
 def calculate_shimmer(audio_path):
     '''
