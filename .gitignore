@@ -3,4 +3,5 @@
 *.json
 *.txt
 MDVR-KCL
-__pycache__
+**/__pycache__/
+
