@@ -1,10 +1,9 @@
 import os
-# import requests
+
 import whisper
 import json
 
-
-model = whisper.load_model("base")
+model = whisper.load_model("base.en")
 
 def transcribe_audio(audio_path):    
     '''

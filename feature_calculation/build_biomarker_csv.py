@@ -6,7 +6,7 @@ import pydub
 from . import transcription_functions, audio_features, text_features
 from audio_preprocessing import audio_preprocessing
 
-def process_audio_file(audio_path):
+def process_audio_file(audio_path, write_preprocess_dir = None):
     """
     Process a single audio file and extract all metrics
     
@@ -28,8 +28,13 @@ def process_audio_file(audio_path):
     audioSeg = audio_preprocessing.trim_leading_and_lagging_silence(audioSeg)
     audioSeg = audio_preprocessing.match_target_amplitude(audioSeg, target_dBFS=-20)
     # Create a temporary trimmed file path
-    preprocessed_path = os.path.join(os.path.dirname(audio_path), f"{filename}_preprocessed.wav")
-    audioSeg.export(preprocessed_path, format="wav")
+    if write_preprocess_dir is not None:
+        os.makedirs(write_preprocess_dir, exist_ok=True)
+        preprocessed_path = os.path.join(write_preprocess_dir, f"{filename}_preprocessed.wav")
+        audioSeg.export(preprocessed_path, format="wav")
+    else:
+        preprocessed_path = os.path.join(os.path.dirname(audio_path), f"{filename}_preprocessed.wav")
+        audioSeg.export(preprocessed_path, format="wav")
     text_path = transcription_functions.transcribe_audio(preprocessed_path)
     print(f"Preprocessed audio saved to {preprocessed_path}")
     
@@ -100,7 +105,7 @@ def process_audio_file(audio_path):
         
     return metrics
 
-def build_csv(csv_path, audio_files=None, audio_dir=None):
+def build_csv(csv_path, audio_files=None, audio_dir=None, write_preprocess_dir = None):
 
     """
     Generate a CSV file with metrics from transcriptionFunctions and formantExtraction
@@ -127,7 +132,7 @@ def build_csv(csv_path, audio_files=None, audio_dir=None):
     all_metrics = []
     for audio_path in audio_files:
         print(f"Processing {os.path.basename(audio_path)}...")
-        metrics = process_audio_file(audio_path)
+        metrics = process_audio_file(audio_path, write_preprocess_dir)
         all_metrics.append(metrics)
     
     # Create DataFrame and save to CSV
