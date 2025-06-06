@@ -16,12 +16,9 @@ def correlation_heatmap(df, method="pearson", feature_axis=1):
     elif feature_axis == 0:
         correlation_matrix = df.corr(method=method, axis=0)
 
-    # Create figure and axis with GridSpec for better layout control
-    fig = plt.figure(figsize=(10, 10), dpi=300)
-    gs = plt.GridSpec(1, 2, width_ratios=[20, 1], wspace=0.1)
-    ax = fig.add_subplot(gs[0])
-    cbar_ax = fig.add_subplot(gs[1])
-
+    # Create figure and axis with adjusted figsize to account for labels
+    fig, ax = plt.subplots(figsize=(10, 8), dpi=300)
+    
     # Mask to show only the bottom triangle
     mask = np.triu(np.ones_like(correlation_matrix, dtype=bool))
 
@@ -33,13 +30,15 @@ def correlation_heatmap(df, method="pearson", feature_axis=1):
         cmap="coolwarm",
         ax=ax,
         square=True,
-        cbar_ax=cbar_ax,
-        cbar_kws={"label": "Correlation"}
+        cbar_kws={"label": "Correlation", "shrink": 0.8}
     )
     
-    # Adjust layout
-    plt.tight_layout()
-    plt.show()
+    # Precise subplot adjustments instead of tight_layout
+    # Increase left margin, reduce top margin
+    fig.subplots_adjust(left=0.2, right=0.9, top=0.9, bottom=0.1)
+    
+    # Increase font size and padding of y-tick labels
+    ax.tick_params(axis='y', labelsize=9, pad=5)
 
     return fig
 
@@ -54,24 +53,22 @@ def distribution_heatmap(df, feature_axis=1):
     elif feature_axis == 0:
         df = data_preprocessing.normalize_df(df)
 
-    # Create figure and axis with GridSpec
-    fig = plt.figure(figsize=(10, 10), dpi=300)
-    gs = plt.GridSpec(1, 2, width_ratios=[20, 1], wspace=0.1)
-    ax = fig.add_subplot(gs[0])
-    cbar_ax = fig.add_subplot(gs[1])
-
+    # Create figure and axis with adjusted figsize
+    fig, ax = plt.subplots(figsize=(10, 8), dpi=300)
+    
     # Create heatmap
     sns.heatmap(
         df,
         cmap="coolwarm",
         square=True,
         ax=ax,
-        cbar_ax=cbar_ax,
-        cbar_kws={"label": "Z-Score"}
+        cbar_kws={"label": "Z-Score", "shrink": 0.8}
     )
     
-    # Adjust layout
-    plt.tight_layout()
-    plt.show()
+    # Precise subplot adjustments
+    fig.subplots_adjust(left=0.2, right=0.9, top=0.9, bottom=0.1)
+    
+    # Increase font size and padding of y-tick labels
+    ax.tick_params(axis='y', labelsize=9, pad=5)
 
     return fig
