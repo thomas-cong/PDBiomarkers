@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from data_visualization import data_preprocessing
 
-def correlation_heatmap(df, method="pearson", feature_axis=1):
+def correlation_heatmap(df, method="pearson", feature_axis=1, title = None):
     '''
     Given a dataframe, return a heatmap of the correlation matrix
     df: dataframe
@@ -12,8 +12,10 @@ def correlation_heatmap(df, method="pearson", feature_axis=1):
     feature_axis: axis to calculate pairwise correlation, default is 1 (columns)
     '''
     if feature_axis == 1:
+        df.dropna(axis=0, inplace=True)
         correlation_matrix = df.corr(method=method)
     elif feature_axis == 0:
+        df.dropna(axis=1, inplace=True)
         correlation_matrix = df.corr(method=method, axis=0)
 
     # Create figure and axis with adjusted figsize to account for labels
@@ -39,7 +41,8 @@ def correlation_heatmap(df, method="pearson", feature_axis=1):
     
     # Increase font size and padding of y-tick labels
     ax.tick_params(axis='both', labelsize=9, pad=5)
-
+    if title:
+        ax.set_title(title, pad=10)  # Adjust pad as needed
     return fig
 
 def distribution_heatmap(df, feature_axis=1, healthy_split = None, title = None):
@@ -49,8 +52,10 @@ def distribution_heatmap(df, feature_axis=1, healthy_split = None, title = None)
     feature_axis: axis to calculate pairwise correlation, default is 1 (columns)
     '''
     if feature_axis == 1:
+        df.dropna(axis=1, inplace=True)
         df = data_preprocessing.normalize_df(df).transpose()
     elif feature_axis == 0:
+        df.dropna(axis=0, inplace=True)
         df = data_preprocessing.normalize_df(df)
 
     # Create figure and axis with adjusted figsize
