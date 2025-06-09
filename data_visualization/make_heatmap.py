@@ -2,7 +2,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-from . import data_preprocessing
+from data_visualization import data_preprocessing
 
 def correlation_heatmap(df, method="pearson", feature_axis=1):
     '''
@@ -38,11 +38,11 @@ def correlation_heatmap(df, method="pearson", feature_axis=1):
     fig.subplots_adjust(left=0.2, right=0.9, top=0.9, bottom=0.1)
     
     # Increase font size and padding of y-tick labels
-    ax.tick_params(axis='y', labelsize=9, pad=5)
+    ax.tick_params(axis='both', labelsize=9, pad=5)
 
     return fig
 
-def distribution_heatmap(df, feature_axis=1):
+def distribution_heatmap(df, feature_axis=1, healthy_split = None, title = None):
     '''
     Given a dataframe, return a heatmap of the distribution of the features
     df: dataframe
@@ -56,19 +56,40 @@ def distribution_heatmap(df, feature_axis=1):
     # Create figure and axis with adjusted figsize
     fig, ax = plt.subplots(figsize=(10, 8), dpi=300)
     
-    # Create heatmap
+    # Create heatmap with adjusted parameters
+    show_xticks = True if df.shape[1] < 100 else False
     sns.heatmap(
         df,
         cmap="coolwarm",
         square=True,
         ax=ax,
-        cbar_kws={"label": "Z-Score", "shrink": 0.8}
+        cbar_kws={"label": "Z-Score", "shrink": 0.6, "location": "bottom"},
+        xticklabels=show_xticks,
+        yticklabels=True,
+        linewidths=0.1,  # Add grid lines between cells
+        linecolor='white'  # Color of the grid lines
     )
     
-    # Precise subplot adjustments
-    fig.subplots_adjust(left=0.2, right=0.9, top=0.9, bottom=0.1)
-    
+    if healthy_split is not None:
+        ax.axvline(x=healthy_split - 1, color='red', linestyle='--', linewidth=0.5)
+        
     # Increase font size and padding of y-tick labels
-    ax.tick_params(axis='y', labelsize=9, pad=5)
+    ax.tick_params(axis='both', 
+                  labelsize=6, 
+                  pad=5,
+                  length=0)  # Remove tick marks
+    
+    # Set the ticks to be centered
+    ax.set_xticks(np.arange(df.shape[1]) + 0.5, minor=False)
+    ax.set_yticks(np.arange(df.shape[0]) + 0.5, minor=False)
+    if title:
+        ax.set_title(title, pad=10)  # Adjust pad as needed
+    
+    # Set the tick labels
+    if show_xticks:
+        ax.set_xticklabels(df.columns, rotation=90)
+    else:
+        ax.set_xticklabels([])
+    ax.set_yticklabels(df.index)
 
     return fig
