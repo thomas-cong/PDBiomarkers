@@ -10,8 +10,6 @@ def feature_comparison_scatterplot(df1, df2, feature):
     df2: dataframe of the second pipeline (test)
     feature: feature to compare
     ''' 
-    df1.index = df1.index.astype(str)
-    df2.index = df2.index.astype(str)
     sample_intersection = df1.index.intersection(df2.index)
     intersected_df1 = df1.loc[sample_intersection,:]
     intersected_df2 = df2.loc[sample_intersection,:]
