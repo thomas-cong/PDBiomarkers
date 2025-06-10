@@ -93,6 +93,13 @@ def process_audio_file(audio_path, write_preprocess_dir = None):
         metrics['jitter_local_db'] = jitter[1]
         metrics['jitter_apq3'] = jitter[2]
         metrics['jitter_apq5'] = jitter[3]
+        number_of_coeffecients = 13
+        for x in range(number_of_coeffecients):
+            mfcc_calculation = audio_features.calculate_mfcc(preprocessed_path)
+            metrics[f'mfcc_{x}_mean'] = mfcc_calculation[0][x]
+            metrics[f'mfcc_{x}_std'] = mfcc_calculation[1][x]
+            metrics[f'mfcc_{x}_min'] = mfcc_calculation[2][x]
+            metrics[f'mfcc_{x}_max'] = mfcc_calculation[3][x]
         
     except Exception as e:
         print(f"Error processing {filename}: {str(e)}")

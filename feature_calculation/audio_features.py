@@ -166,3 +166,15 @@ def calculate_jitter(audio_path):
     jitter_ppq5 = call(point_process, "Get jitter (ppq5)", 0, 0, 0.0001, 0.02, 1.3)
     # five-point period perturbation quotient (mean diff with four neighbors)
     return [jitter_local, jitter_local_absolute, jitter_rap, jitter_ppq5]
+def calculate_mfcc(audio_path):
+    sound = parselmouth.Sound(audio_path)
+    mfcc = sound.to_mfcc(number_of_coefficients=13)
+    # mfcc.to_array() returns a numpy array of shape (n_mfcc_coefficients, n_frames)
+    # We transpose it to have shape (n_frames, n_mfcc_coefficients)
+    mfcc_matrix = mfcc.to_array().T
+    return np.mean(mfcc_matrix, axis=0), np.std(mfcc_matrix, axis=0), np.min(mfcc_matrix, axis=0), np.max(mfcc_matrix, axis=0)
+
+if __name__ == "__main__":
+    audio_path = "/Users/thomas.cong/Downloads/ResearchCode/MDVR-KCL/ReadText/HC/ID00_hc_0_0_0.wav"
+    print(calculate_mfcc(audio_path).shape)
+
