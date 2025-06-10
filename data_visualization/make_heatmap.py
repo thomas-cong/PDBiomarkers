@@ -23,13 +23,9 @@ def correlation_heatmap(df, method="pearson", feature_axis=1, title = None):
     # Create figure and axis with adjusted figsize to account for labels
     fig, ax = plt.subplots(figsize=(10, 8), dpi=300)
     
-    # Mask to show only the bottom triangle
-    mask = np.triu(np.ones_like(correlation_matrix, dtype=bool))
-
     # Create heatmap
     sns.heatmap(
         correlation_matrix,
-        mask=mask,
         annot=False,
         cmap="coolwarm",
         ax=ax,
