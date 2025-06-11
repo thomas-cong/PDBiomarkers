@@ -1,3 +1,8 @@
-install.packages('reshape2')
-install.packages('ggplot2')
-install.packages('ggthemes')
+packages <- list("ggplot2", "styler", "reshape2", "dplyr", "tidyr")
+
+# Install packages if they are not already installed
+for (pkg in packages) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+}

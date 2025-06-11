@@ -84,10 +84,9 @@ def calculate_hull_area(data):
     return hull.volume
 
 '''
-Given audio file, calculate their fundamental frequency (mean, median, std, min, max)
+Given parselmouth Sound, calculate their fundamental frequency (mean, median, std, min, max)
 '''
-def calculate_fundamental_frequency(audio_path):
-    sound = parselmouth.Sound(audio_path)
+def calculate_fundamental_frequency(sound):
     pitch = sound.to_pitch()
     frequencies = pitch.selected_array['frequency']
     voiced_frequencies = frequencies[frequencies > 0]
@@ -95,35 +94,32 @@ def calculate_fundamental_frequency(audio_path):
     return [np.mean(voiced_frequencies), np.median(voiced_frequencies), np.std(voiced_frequencies), np.min(voiced_frequencies), np.max(voiced_frequencies)]
 
 '''
-Given audio file, calculate their intensity (mean, median, std, min, max)
+Given parselmouth Sound, calculate their intensity (mean, median, std, min, max)
 '''
-def calculate_intensity(audio_path):
-    sound = parselmouth.Sound(audio_path)
+def calculate_intensity(sound):
     intensity = sound.to_intensity()
     # average intensity (estimate of amplitude over time)
     return [np.mean(intensity), np.median(intensity), np.std(intensity), np.min(intensity), np.max(intensity)]
 '''
-Given audio file, calculate the harmonicity (mean, median, std, min, max)
+Given parselmouth Sound, calculate the harmonicity (mean, median, std, min, max)
 '''
-def calculate_harmonicity(audio_path):
-    sound = parselmouth.Sound(audio_path)
+def calculate_harmonicity(sound):
     harmonicity = call(sound, "To Harmonicity (cc)", 0.01, 75, 0.1, 1.0)
     # harmonic (voiced speech) to noise ratio
     mean = call(harmonicity, "Get mean", 0,0)
     std = call(harmonicity, "Get standard deviation", 0,0)
-    min = call(harmonicity, "Get minimum", 0,0, "parabolic")
-    max = call(harmonicity, "Get maximum", 0,0, "parabolic")
-    return [mean, std, min, max]
+    min_val = call(harmonicity, "Get minimum", 0,0, "parabolic")
+    max_val = call(harmonicity, "Get maximum", 0,0, "parabolic")
+    return [mean, std, min_val, max_val]
 
-def calculate_shimmer(audio_path):
+def calculate_shimmer(sound):
     '''
-    Given audio file, calculate their shimmer
+    Given parselmouth Sound, calculate their shimmer
     Shimmer: represents the change in loudness of each period
     Period: duration of one complete cycle of a soundwave
     '''
-    sound = parselmouth.Sound(audio_path)
-    max_freq = calculate_fundamental_frequency(audio_path)[-1]
-    min_freq = calculate_fundamental_frequency(audio_path)[-2]
+    max_freq = calculate_fundamental_frequency(sound)[-1]
+    min_freq = calculate_fundamental_frequency(sound)[-2]
     point_process = parselmouth.praat.call(sound, "To PointProcess (periodic, cc)", min_freq, max_freq)
     # parselmouth.praat.call([sound, point_process], "Get shimmer (local)", 
     # minimum_pitch, 
@@ -144,15 +140,14 @@ def calculate_shimmer(audio_path):
     return [localShimmer, localdbShimmer, apq3Shimmer, aqpq5Shimmer]
 
     
-def calculate_jitter(audio_path):
+def calculate_jitter(sound):
     '''
-    Given audio file, calculate jitter features.
+    Given parselmouth Sound, calculate jitter features.
     Jitter: represents the change in duration of each period.
     Period: duration of one complete cycle of a soundwave.
     '''
-    sound = parselmouth.Sound(audio_path)
-    max_freq = calculate_fundamental_frequency(audio_path)[-1]
-    min_freq = calculate_fundamental_frequency(audio_path)[-2]
+    max_freq = calculate_fundamental_frequency(sound)[-1]
+    min_freq = calculate_fundamental_frequency(sound)[-2]
     point_process = call(sound, "To PointProcess (periodic, cc)", min_freq, max_freq)
     # Jitter metrics are called on the PointProcess object, not [sound, point_process]
     # Praat signature: (time range start [s], time range end [s], min period [s], max period [s], max period factor)
@@ -166,15 +161,25 @@ def calculate_jitter(audio_path):
     jitter_ppq5 = call(point_process, "Get jitter (ppq5)", 0, 0, 0.0001, 0.02, 1.3)
     # five-point period perturbation quotient (mean diff with four neighbors)
     return [jitter_local, jitter_local_absolute, jitter_rap, jitter_ppq5]
-def calculate_mfcc(audio_path):
-    sound = parselmouth.Sound(audio_path)
+def calculate_mfcc(sound):
     mfcc = sound.to_mfcc(number_of_coefficients=13)
     # mfcc.to_array() returns a numpy array of shape (n_mfcc_coefficients, n_frames)
     # We transpose it to have shape (n_frames, n_mfcc_coefficients)
     mfcc_matrix = mfcc.to_array().T
     return np.mean(mfcc_matrix, axis=0), np.std(mfcc_matrix, axis=0), np.min(mfcc_matrix, axis=0), np.max(mfcc_matrix, axis=0)
+def calculate_audio_features(audio_path):
+    sound = parselmouth.Sound(audio_path)
+    data = {}
+    data['fundamental_frequency'] = calculate_fundamental_frequency(sound)
+    data["intensity"] = calculate_intensity(sound)
+    data['harmonicity'] = calculate_harmonicity(sound)
+    data['shimmer'] = calculate_shimmer(sound)
+    data['jitter'] = calculate_jitter(sound)
+    data['mfcc'] = calculate_mfcc(sound)
+    return data
+    
 
 if __name__ == "__main__":
     audio_path = "/Users/thomas.cong/Downloads/ResearchCode/MDVR-KCL/ReadText/HC/ID00_hc_0_0_0.wav"
-    print(calculate_mfcc(audio_path).shape)
+    print(calculate_audio_features(audio_path))
 

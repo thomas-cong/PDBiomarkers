@@ -29,9 +29,10 @@ heatmap_function <- function(file_path, save_path, title){
     ggsave(save_path, plot = hm, width = 24, height = 8, dpi = 300)
 }
 files <- list.files("2157-Generated-Data/Clinical", pattern = "normalized.csv", full.names = TRUE)
-for (file in files){
-    file_name <- tail(strsplit(file, "/")[[1]], 1)    
-    save_path <- paste0("./R Figures/", gsub("normalized.csv", "heatmap.png", file_name))
-    heatmap_function(file, save_path, paste(gsub("normalized.csv", "", file_name), "Biomarker Heatmap"))
-}
+# for (file in files){
+#     file_name <- tail(strsplit(file, "/")[[1]], 1)    
+#     save_path <- paste0("./R Figures/", gsub("normalized.csv", "heatmap.png", file_name))
+#     heatmap_function(file, save_path, paste(gsub("normalized.csv", "", file_name), "Biomarker Heatmap"))
+# }
+
 

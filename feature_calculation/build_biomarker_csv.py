@@ -2,8 +2,10 @@
 import os
 import json
 import pandas as pd
+from feature_calculation import transcription_functions
+from feature_calculation import audio_features
+from feature_calculation import text_features
 import pydub
-from . import transcription_functions, audio_features, text_features
 from audio_preprocessing import audio_preprocessing
 
 def process_audio_file(audio_path, write_preprocess_dir = None):
@@ -38,6 +40,8 @@ def process_audio_file(audio_path, write_preprocess_dir = None):
     text_path = transcription_functions.transcribe_audio(preprocessed_path)
     print(f"Preprocessed audio saved to {preprocessed_path}")
     
+
+    # TODO: CHECK THE ALIGNMENT OF FUNCTION INDEXING
     try:
         # Get alignment data
         alignment_path = preprocessed_path.split("/")
@@ -63,44 +67,44 @@ def process_audio_file(audio_path, write_preprocess_dir = None):
         metrics['speech_rate'] = lexical_dict['speechrate(nsyll / dur)']
         metrics['articulation_rate'] = lexical_dict['articulation_rate(nsyll/phonationtime)']
         metrics['average_syllable_duration'] = lexical_dict['average_syllable_dur(speakingtime/nsyll)']
-        
-        ff = audio_features.calculate_fundamental_frequency(preprocessed_path)
-        metrics['ff_mean'] = ff[0]
-        metrics['ff_median'] = ff[1]
-        metrics['ff_std'] = ff[2]
-        metrics['ff_min'] = ff[3]
-        metrics['ff_max'] = ff[4]
-        inten = audio_features.calculate_intensity(preprocessed_path)
-        metrics['inten_mean'] = inten[0]
-        metrics['inten_median'] = inten[1]
-        metrics['inten_std'] = inten[2]
-        metrics['inten_min'] = inten[3]
-        metrics['inten_max'] = inten[4]
-        harm = audio_features.calculate_harmonicity(preprocessed_path)
-        metrics['harm_mean'] = harm[0]
-        metrics['harm_std'] = harm[1]
-        metrics['harm_min'] = harm[2]
-        metrics['harm_max'] = harm[3]
 
-        metrics['avg_word_length'] = text_features.avg_word_length(text_path)
-        metrics['avg_syllables_per_word'] = text_features.avg_syllables_per_word(text_path)
-        shimmer = audio_features.calculate_shimmer(preprocessed_path)
-        metrics['shimmer_local'] = shimmer[0]
-        metrics['shimmer_local_db'] = shimmer[1]
-        metrics['shimmer_apq3'] = shimmer[2]
-        metrics['shimmer_apq5'] = shimmer[3]
-        jitter = audio_features.calculate_jitter(preprocessed_path)
-        metrics['jitter_local'] = jitter[0]
-        metrics['jitter_local_db'] = jitter[1]
-        metrics['jitter_apq3'] = jitter[2]
-        metrics['jitter_apq5'] = jitter[3]
+        text_feats = text_features.calculate_text_features(text_path)
+        metrics['avg_word_length'] = text_feats['avg_word_length']
+        metrics['avg_syllables_per_word'] = text_feats['avg_syllables_per_word'] 
+        metrics['content_richness'] = text_feats['content_richness']
+        metrics['mattr'] = text_feats['mattr']
+        metrics['phrase_patterns'] = text_feats['phrase_patterns']
+        metrics['sentence_length'] = text_feats['sentence_length']
+
+        audio_feats = audio_features.calculate_audio_features(preprocessed_path)
+        metrics['ff_mean'] = audio_feats['fundamental_frequency'][0]
+        metrics['ff_median'] = audio_feats['fundamental_frequency'][1]
+        metrics['ff_std'] = audio_feats['fundamental_frequency'][2]
+        metrics['ff_min'] = audio_feats['fundamental_frequency'][3]
+        metrics['ff_max'] = audio_feats['fundamental_frequency'][4]
+        metrics['inten_mean'] = audio_feats['intensity'][0]
+        metrics['inten_median'] = audio_feats['intensity'][1]
+        metrics['inten_std'] = audio_feats['intensity'][2]
+        metrics['inten_min'] = audio_feats['intensity'][3]
+        metrics['inten_max'] = audio_feats['intensity'][4]
+        metrics['harm_mean'] = audio_feats['harmonicity'][0]
+        metrics['harm_std'] = audio_feats['harmonicity'][1]
+        metrics['harm_min'] = audio_feats['harmonicity'][2]
+        metrics['harm_max'] = audio_feats['harmonicity'][3]
+        metrics['shimmer_local'] = audio_feats['shimmer'][0]
+        metrics['shimmer_local_db'] = audio_feats['shimmer'][1]
+        metrics['shimmer_apq3'] = audio_feats['shimmer'][2]
+        metrics['shimmer_apq5'] = audio_feats['shimmer'][3]
+        metrics['jitter_local'] = audio_feats['jitter'][0]
+        metrics['jitter_local_db'] = audio_feats['jitter'][1]
+        metrics['jitter_apq3'] = audio_feats['jitter'][2]
+        metrics['jitter_apq5'] = audio_feats['jitter'][3]
         number_of_coeffecients = 13
         for x in range(number_of_coeffecients):
-            mfcc_calculation = audio_features.calculate_mfcc(preprocessed_path)
-            metrics[f'mfcc_{x}_mean'] = mfcc_calculation[0][x]
-            metrics[f'mfcc_{x}_std'] = mfcc_calculation[1][x]
-            metrics[f'mfcc_{x}_min'] = mfcc_calculation[2][x]
-            metrics[f'mfcc_{x}_max'] = mfcc_calculation[3][x]
+            metrics[f'mfcc_{x}_mean'] = audio_feats['mfcc'][0][x]
+            metrics[f'mfcc_{x}_std'] = audio_feats['mfcc'][1][x]
+            metrics[f'mfcc_{x}_min'] = audio_feats['mfcc'][2][x]
+            metrics[f'mfcc_{x}_max'] = audio_feats['mfcc'][3][x]
         
     except Exception as e:
         print(f"Error processing {filename}: {str(e)}")
