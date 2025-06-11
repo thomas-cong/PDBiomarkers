@@ -23,9 +23,13 @@ def correlation_heatmap(df, method="pearson", feature_axis=1, title = None):
     # Create figure and axis with adjusted figsize to account for labels
     fig, ax = plt.subplots(figsize=(10, 8), dpi=300)
     
+    # Mask to show only the bottom triangle
+    mask = np.triu(np.ones_like(correlation_matrix, dtype=bool))
+
     # Create heatmap
     sns.heatmap(
         correlation_matrix,
+        mask=mask,
         annot=False,
         cmap="coolwarm",
         ax=ax,
@@ -68,9 +72,6 @@ def distribution_heatmap(df, feature_axis=1, healthy_split=None, title=None, pai
         df = data_preprocessing.normalize_df(df)
     if df.shape[0] == 0 or df.shape[1] == 0:
         return None
-    def cap_at_3(x):
-        return max(min(x, 3), -3)
-    df = df.applymap(cap_at_3)
 
     # Create figure and axis with adjusted figsize
     fig, ax = plt.subplots(figsize=(10, 8), dpi=300)
@@ -118,7 +119,7 @@ def distribution_heatmap(df, feature_axis=1, healthy_split=None, title=None, pai
         heatmap_y_range = y_max_orig - y_min_orig
 
         # Define spacing for the horizontal bars of the staples
-        horizontal_bar_spacing = 0.03 * heatmap_y_range  # Vertical space between horizontal bars of consecutive staples
+        horizontal_bar_spacing = 0.005 * heatmap_y_range  # Vertical space between horizontal bars of consecutive staples
         first_horizontal_bar_y_offset = 0.005 * heatmap_y_range # Offset of the first horizontal bar from heatmap top
 
         # Y-coordinate for the horizontal bar of the first bracket
@@ -145,13 +146,13 @@ def distribution_heatmap(df, feature_axis=1, healthy_split=None, title=None, pai
             
             # Draw the top horizontal line of the staple
             ax.hlines(y=current_horizontal_bar_y, xmin=x_start, xmax=x_end, 
-                     colors='red', linewidth=line_width, zorder=10) # Increased zorder
+                     colors='blue', linewidth=line_width, zorder=10) # Increased zorder
             
             # Draw the vertical lines (legs of the staple, extending from heatmap top to horizontal bar)
             ax.vlines(x=x_start, ymin=y_max_orig, ymax=current_horizontal_bar_y, 
-                     colors='red', linewidth=line_width, zorder=10) # Increased zorder
+                     colors='blue', linewidth=line_width, zorder=10) # Increased zorder
             ax.vlines(x=x_end, ymin=y_max_orig, ymax=current_horizontal_bar_y, 
-                     colors='red', linewidth=line_width, zorder=10) # Increased zorder
+                     colors='blue', linewidth=line_width, zorder=10) # Increased zorder
         
         # Adjust overall y-axis upper limit to ensure all brackets are visible
         # Add a small padding above the topmost bracket's horizontal bar
