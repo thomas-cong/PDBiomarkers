@@ -59,10 +59,11 @@ def process_audio_file(audio_path, write_preprocess_dir = None):
         bark_formant_data = formant_data[["F1(Bark)", "F2(Bark)"]]
         metrics['aavs'] = audio_features.calculate_aavs(bark_formant_data)
         metrics['hull_area'] = audio_features.calculate_hull_area(bark_formant_data)
-        metrics['avg_syllable_duration'] = transcription_functions.average_syllable_duration(segments)
-        metrics['speech_rate_syllable'] = transcription_functions.speech_rate(segments, by='syllable')
-        metrics['speech_rate_word'] = transcription_functions.speech_rate(segments, by='word')
-        metrics['avg_pause_duration'] = avg_pause_duration
+        lexical_dict = transcription_functions.adv_speech_metrics(preprocessed_path)
+        metrics['speech_rate'] = lexical_dict['speechrate(nsyll / dur)']
+        metrics['articulation_rate'] = lexical_dict['articulation_rate(nsyll/phonationtime)']
+        metrics['average_syllable_duration'] = lexical_dict['average_syllable_dur(speakingtime/nsyll)']
+        
         ff = audio_features.calculate_fundamental_frequency(preprocessed_path)
         metrics['ff_mean'] = ff[0]
         metrics['ff_median'] = ff[1]

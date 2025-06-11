@@ -49,7 +49,7 @@ def generate_formant_data(audio_path):
     bark_transformed_df.drop(["F1(Hz)", "F2(Hz)"], axis=1, inplace=True)
     bark_transformed_df.reset_index(drop=True, inplace=True)
 
-    gmm = GaussianMixture(n_components=6, covariance_type='full', random_state=42)
+    gmm = GaussianMixture(n_components=12, covariance_type='full', random_state=42)
     gmm.fit(bark_transformed_df[["F1(Bark)", "F2(Bark)"]])
     log_probs = pd.DataFrame(gmm.score_samples(bark_transformed_df[["F1(Bark)", "F2(Bark)"]]), columns=['log_prob'])
     log_probs["Time(s)"] = bark_transformed_df["Time(s)"]
@@ -77,7 +77,7 @@ def calculate_aavs(data):
 Given a dataframe with only bark formant data, calculate the hull area of the clusters
 '''
 def calculate_hull_area(data):
-    kmeans = KMeans(n_clusters = 6, random_state = 0, n_init="auto")
+    kmeans = KMeans(n_clusters = 12, random_state = 0, n_init="auto")
     kmeans.fit(data)
     centers = kmeans.cluster_centers_
     hull = ConvexHull(centers)
