@@ -9,10 +9,8 @@ import numpy as np
 # nltk.download('averaged_perceptron_tagger_eng')
 def avg_word_length(string):
     words = string.split()
+    words = [re.sub(r'[^a-z]', '', word) for word in words]
     return sum(len(word) for word in words) / len(words) if len(words) > 0 else 0
-def avg_syllables_per_word(string):
-    words = string.split()
-    return sum(transcription_functions.count_syllables(word) for word in words) / len(words) if len(words) > 0 else 0
 def content_richness(string):
     '''
     Content Richness: Measures the ratio of open class to closed class words in a given string.
@@ -39,11 +37,13 @@ def mattr(string, window_size = 8):
     '''
     words = string.split()
     window_vals = []
-    end = window_size
+    end = min(window_size, len(words))
     window = words[:end]
     viewed_words = {}
     for word in window:
         viewed_words[word] = 1 if word not in viewed_words else viewed_words[word] + 1
+    if window_size > len(words):
+        return len(viewed_words)/len(words)
     while end < len(words):
         count = len(viewed_words)/window_size
         window_vals.append(count)
@@ -54,6 +54,7 @@ def mattr(string, window_size = 8):
         window.append(words[end])
         viewed_words[words[end]] = 1 if words[end] not in viewed_words else viewed_words[words[end]] + 1
         end += 1
+        window_vals.append(count)
     return np.mean(window_vals)
 def n_grams(string, n = 2):
     '''
@@ -85,7 +86,6 @@ def calculate_text_features(text_path):
     text = text.lower()
     return {
         "avg_word_length": avg_word_length(text),
-        "avg_syllables_per_word": avg_syllables_per_word(text),
         "content_richness": content_richness(text),
         "mattr": mattr(text),
         "phrase_patterns": phrase_patterns(text),

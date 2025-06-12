@@ -67,10 +67,10 @@ def process_audio_file(audio_path, write_preprocess_dir = None):
         metrics['speech_rate'] = lexical_dict['speechrate(nsyll / dur)']
         metrics['articulation_rate'] = lexical_dict['articulation_rate(nsyll/phonationtime)']
         metrics['average_syllable_duration'] = lexical_dict['average_syllable_dur(speakingtime/nsyll)']
+        metrics['average_pause_duration'] = avg_pause_duration
 
         text_feats = text_features.calculate_text_features(text_path)
         metrics['avg_word_length'] = text_feats['avg_word_length']
-        metrics['avg_syllables_per_word'] = text_feats['avg_syllables_per_word'] 
         metrics['content_richness'] = text_feats['content_richness']
         metrics['mattr'] = text_feats['mattr']
         metrics['phrase_patterns'] = text_feats['phrase_patterns']
@@ -105,6 +105,7 @@ def process_audio_file(audio_path, write_preprocess_dir = None):
             metrics[f'mfcc_{x}_std'] = audio_feats['mfcc'][1][x]
             metrics[f'mfcc_{x}_min'] = audio_feats['mfcc'][2][x]
             metrics[f'mfcc_{x}_max'] = audio_feats['mfcc'][3][x]
+        metrics['ppe'] = audio_feats['ppe']
         
     except Exception as e:
         print(f"Error processing {filename}: {str(e)}")
