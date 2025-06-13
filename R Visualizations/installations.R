@@ -1,4 +1,4 @@
-packages <- list("ggplot2", "styler", "reshape2", "dplyr", "tidyr")
+packages <- list("BiocManager","ggplot2", "styler", "reshape2", "dplyr", "tidyr")
 
 # Install packages if they are not already installed
 for (pkg in packages) {
@@ -6,3 +6,4 @@ for (pkg in packages) {
     install.packages(pkg)
   }
 }
+BiocManager::install("ComplexHeatmap")

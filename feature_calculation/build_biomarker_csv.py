@@ -29,6 +29,10 @@ def process_audio_file(audio_path, write_preprocess_dir = None):
     audioSeg = audio_preprocessing.resample(audioSeg)
     audioSeg = audio_preprocessing.trim_leading_and_lagging_silence(audioSeg)
     audioSeg = audio_preprocessing.match_target_amplitude(audioSeg, target_dBFS=-20)
+
+    if audioSeg.duration_seconds < 0.5:
+        print(f"Audio file {filename} is too short, skipping...")
+        return None
     # Create a temporary trimmed file path
     if write_preprocess_dir is not None:
         os.makedirs(write_preprocess_dir, exist_ok=True)
@@ -56,8 +60,6 @@ def process_audio_file(audio_path, write_preprocess_dir = None):
             segments = json.load(f)
         
         # Calculate metrics from transcription_functions
-        interword_pauses = transcription_functions.calculate_interword_pauses(segments)
-        avg_pause_duration = sum(interword_pauses) / len(interword_pauses) if interword_pauses else 0
         # Extract formant data and calculate AAVS and hull area
         formant_data = audio_features.generate_formant_data(preprocessed_path)
         bark_formant_data = formant_data[["F1(Bark)", "F2(Bark)"]]
@@ -67,7 +69,6 @@ def process_audio_file(audio_path, write_preprocess_dir = None):
         metrics['speech_rate'] = lexical_dict['speechrate(nsyll / dur)']
         metrics['articulation_rate'] = lexical_dict['articulation_rate(nsyll/phonationtime)']
         metrics['average_syllable_duration'] = lexical_dict['average_syllable_dur(speakingtime/nsyll)']
-        metrics['average_pause_duration'] = avg_pause_duration
 
         text_feats = text_features.calculate_text_features(text_path)
         metrics['avg_word_length'] = text_feats['avg_word_length']
@@ -77,6 +78,7 @@ def process_audio_file(audio_path, write_preprocess_dir = None):
         metrics['sentence_length'] = text_feats['sentence_length']
 
         audio_feats = audio_features.calculate_audio_features(preprocessed_path)
+        metrics['avg_pause_duration'] = audio_feats['avg_pause_duration']
         metrics['ff_mean'] = audio_feats['fundamental_frequency'][0]
         metrics['ff_median'] = audio_feats['fundamental_frequency'][1]
         metrics['ff_std'] = audio_feats['fundamental_frequency'][2]
@@ -146,7 +148,8 @@ def build_csv(csv_path, audio_files=None, audio_dir=None, write_preprocess_dir =
     for audio_path in audio_files:
         print(f"Processing {os.path.basename(audio_path)}...")
         metrics = process_audio_file(audio_path, write_preprocess_dir)
-        all_metrics.append(metrics)
+        if metrics:
+            all_metrics.append(metrics)
     
     # Create DataFrame and save to CSV
     if all_metrics:
@@ -169,3 +172,5 @@ def build_csv(csv_path, audio_files=None, audio_dir=None, write_preprocess_dir =
     else:
         print("No audio files were processed.")
 
+if __name__ == "__main__":
+    pass

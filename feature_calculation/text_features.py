@@ -43,7 +43,7 @@ def mattr(string, window_size = 8):
     for word in window:
         viewed_words[word] = 1 if word not in viewed_words else viewed_words[word] + 1
     if window_size > len(words):
-        return len(viewed_words)/len(words)
+        return len(viewed_words)/len(words) if len(words) > 0 else 0
     while end < len(words):
         count = len(viewed_words)/window_size
         window_vals.append(count)

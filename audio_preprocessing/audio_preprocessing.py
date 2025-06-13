@@ -6,7 +6,7 @@ def resample(sound, hz = 16000):
     '''
     return sound.set_frame_rate(hz)
 
-def detect_leading_silence(sound, silence_threshold=-50.0, chunk_size=10):
+def detect_leading_silence(sound, silence_threshold=-40.0, chunk_size=10):
     '''
     sound is a pydub Sound
     silence_threshold in dB

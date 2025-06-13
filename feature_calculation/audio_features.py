@@ -9,6 +9,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.signal import lfilter
 import librosa
+import warnings
+
 
 '''
 Given an audio path, extract formant data using parselmouth
@@ -194,9 +196,27 @@ def calculate_ppe(sound):
 
     PPE = -np.sum(dpd[dpd != 0] * np.log2(dpd[dpd != 0]))
     return PPE
-    
-    
 
+def calculate_interword_pauses(sound):
+    try:
+        intensity = sound.to_intensity()
+        textgrid = call(intensity, "To TextGrid (silences)",  -20, 0.3, 0.1, "silent", "sounding")
+        silencetier = call(textgrid, "Extract tier", 1)
+        silencetable = call(silencetier, "Down to TableOfReal", "silent")
+        npauses = call(silencetable, "Get number of rows")
+        pause_durations = []
+        for ipause in range(npauses):
+            pause = ipause + 1
+            begin = call(silencetable, "Get value", pause, 1)
+            end = call(silencetable, "Get value", pause, 2)
+            pause_durations.append(end - begin)
+        std_pause_durations = np.std(pause_durations)
+        pause_durations_inlying = [x for x in pause_durations if x < std_pause_durations * 3]
+        mean = np.mean(pause_durations_inlying)
+        return mean
+    except:
+        print("No silence detected in audio file, returning 0")
+        return 0
 
 def calculate_audio_features(audio_path):
     sound = parselmouth.Sound(audio_path)
@@ -208,6 +228,7 @@ def calculate_audio_features(audio_path):
     data['jitter'] = calculate_jitter(sound)
     data['mfcc'] = calculate_mfcc(sound)
     data['ppe'] = calculate_ppe(sound)
+    data['avg_pause_duration'] = calculate_interword_pauses(sound)
     # Check for NaNs or infs in feature dict
     for k, v in data.items():
         if isinstance(v, (list, np.ndarray)):

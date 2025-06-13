@@ -59,6 +59,9 @@ def calculate_interword_pauses(segments):
                 pauses.append(pause)
             prev_end = word['end']
     return pauses
+def avg_pause_duration(pauses):
+
+    return sum(pauses) / len(pauses) if pauses else 0
 
 def adv_speech_metrics(filename):
 
@@ -196,3 +199,7 @@ def adv_speech_metrics(filename):
                              "articulation_rate(nsyll/phonationtime)": articulationrate,
                              "average_syllable_dur(speakingtime/nsyll)": asd}
     return speechrate_dictionary
+
+if __name__ == "__main__":
+    adv_speech_metrics("Preprocessed 2157/71254-05-01-2025_21_08_45_preprocessed.wav")
+    
