@@ -200,7 +200,7 @@ def calculate_ppe(sound):
 def calculate_interword_pauses(sound):
     try:
         intensity = sound.to_intensity()
-        textgrid = call(intensity, "To TextGrid (silences)",  -20, 0.3, 0.1, "silent", "sounding")
+        textgrid = call(intensity, "To TextGrid (silences)",  -10, 0.1, 0.1, "silent", "sounding")
         silencetier = call(textgrid, "Extract tier", 1)
         silencetable = call(silencetier, "Down to TableOfReal", "silent")
         npauses = call(silencetable, "Get number of rows")

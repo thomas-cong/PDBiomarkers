@@ -7,6 +7,7 @@ from feature_calculation import audio_features
 from feature_calculation import text_features
 import pydub
 from audio_preprocessing import audio_preprocessing
+from tqdm import tqdm
 
 def process_audio_file(audio_path, write_preprocess_dir = None):
     """
@@ -27,8 +28,8 @@ def process_audio_file(audio_path, write_preprocess_dir = None):
     # Preprocess the audio file
     audioSeg = pydub.AudioSegment.from_file(audio_path, format="wav")
     audioSeg = audio_preprocessing.resample(audioSeg)
+    audioSeg = audio_preprocessing.match_target_amplitude(audioSeg, target_dBFS=3)
     audioSeg = audio_preprocessing.trim_leading_and_lagging_silence(audioSeg)
-    audioSeg = audio_preprocessing.match_target_amplitude(audioSeg, target_dBFS=-20)
 
     if audioSeg.duration_seconds < 0.5:
         print(f"Audio file {filename} is too short, skipping...")
@@ -41,9 +42,7 @@ def process_audio_file(audio_path, write_preprocess_dir = None):
     else:
         preprocessed_path = os.path.join(os.path.dirname(audio_path), f"{filename}_preprocessed.wav")
         audioSeg.export(preprocessed_path, format="wav")
-    text_path = transcription_functions.transcribe_audio(preprocessed_path)
-    print(f"Preprocessed audio saved to {preprocessed_path}")
-    
+    text_path = transcription_functions.transcribe_audio(preprocessed_path)    
 
     # TODO: CHECK THE ALIGNMENT OF FUNCTION INDEXING
     try:
@@ -52,7 +51,6 @@ def process_audio_file(audio_path, write_preprocess_dir = None):
         alignment_path[-2] = "Alignment Files"
         alignment_path = "/".join(alignment_path)
         alignment_path = alignment_path.replace(".wav", ".json")
-        print("Alignment_Path: ", alignment_path)
         transcription_functions.align_audio(preprocessed_path)
         
         # Load the alignment data
@@ -145,8 +143,7 @@ def build_csv(csv_path, audio_files=None, audio_dir=None, write_preprocess_dir =
     
     # Process each audio file
     all_metrics = []
-    for audio_path in audio_files:
-        print(f"Processing {os.path.basename(audio_path)}...")
+    for audio_path in tqdm(audio_files):
         metrics = process_audio_file(audio_path, write_preprocess_dir)
         if metrics:
             all_metrics.append(metrics)

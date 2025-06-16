@@ -6,10 +6,10 @@ def resample(sound, hz = 16000):
     '''
     return sound.set_frame_rate(hz)
 
-def detect_leading_silence(sound, silence_threshold=-40.0, chunk_size=10):
+def detect_leading_silence(sound, silence_threshold=-20, chunk_size=10):
     '''
     sound is a pydub Sound
-    silence_threshold in dB
+    silence_threshold in dBFs
     chunk_size in ms
 
     iterate over chunks until you find the first one with sound

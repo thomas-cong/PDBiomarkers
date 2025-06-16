@@ -27,7 +27,6 @@ def transcribe_audio(audio_path):
     # Create the text file in the text file folder
     with open(os.path.join(text_file_folder, filename + '.txt'), 'w') as f:
         f.write(transcribed_audio['text'])
-    print(f"Text data saved to {text_file_folder}")
     return os.path.join(text_file_folder, filename + '.txt')
 
 def align_audio(audio_path):
@@ -44,7 +43,6 @@ def align_audio(audio_path):
     segments = result["segments"]
     with open(os.path.join(align_dir, os.path.basename(audio_path).replace('.wav', '') + '.json'), "w", encoding="utf-8") as f:
         json.dump(segments, f, ensure_ascii=False, indent=2)
-    print(f"Alignment data saved to {align_dir}")
 
 def calculate_interword_pauses(segments):
     '''
@@ -79,7 +77,7 @@ def adv_speech_metrics(filename):
 
     silencedb = -25
     mindip = 2
-    minpause = 0.3
+    minpause = 0.1
     sound = parselmouth.Sound(filename)
     originaldur = sound.get_total_duration()
     intensity = sound.to_intensity(50)
