@@ -1,56 +1,113 @@
-library(ggplot2)
-ggsave <- function(..., bg = "white") ggplot2::ggsave(..., bg = bg)
+library(ComplexHeatmap)
+# Save high-resolution PNG (3000×1000 pixels @ 300 dpi)
+make_distribution_heatmap <- function(file_path){
+png(paste0(file_path, "_heatmap.png"), width = 3000, height = 2000, units = "px", res = 300)
 
-library(reshape2)
-library(dplyr)
-library(tidyr)
-library(ggthemes)
-heatmap_function <- function(file_path, save_path, title) {
-    heatmap_data <- read.csv(file_path)
-    # Sort by UPDRSIII Score
-    heatmap_data <- heatmap_data %>%
-        arrange(UPDRSIII) # Replace with exact column name if different
+# Load data
+heatmap_data <- read.csv(file_path, row.names = 1)
 
-    # Set winterlight_id as a factor with levels in sorted order
-    heatmap_data$winterlight_id <- factor(heatmap_data$winterlight_id, levels = heatmap_data$winterlight_id)
-
-    heatmap_long_data <- heatmap_data %>%
-        select(-any_of("subjid")) %>%
-        pivot_longer(
-            cols = -c(winterlight_id, Status),
-            names_to = "biomarker",
-            values_to = "value"
-        )
-    # Reorder biomarker so 'Speech' is second to last
-    biomarker_levels <- unique(heatmap_long_data$biomarker)
-    biomarker_levels <- biomarker_levels[biomarker_levels != "Speech"]
-    if (length(biomarker_levels) >= 1) {
-        biomarker_levels <- append(biomarker_levels, "Speech", after = length(biomarker_levels) - 1)
-    } else {
-        biomarker_levels <- c("Speech")
-    }
-    heatmap_long_data$biomarker <- factor(heatmap_long_data$biomarker, levels = biomarker_levels)
-    heatmap_long_data <- heatmap_long_data %>%
-        mutate(
-            winterlight_id = as.factor(winterlight_id),
-            Status = as.factor(Status)
-        )
-    hm <- ggplot(heatmap_long_data, aes(x = winterlight_id, y = biomarker, fill = value)) +
-        geom_tile() +
-        scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
-        labs(title = title) +
-        facet_grid(~Status, scales = "free_x", space = "free_x") +
-        theme_tufte(base_family = "Helvetica") +
-        theme(
-            axis.title.x = element_blank(),
-            axis.text.x = element_blank(),
-            axis.ticks.x = element_blank()
-        )
-    ggsave(save_path, plot = hm, width = 24, height = 8, dpi = 300)
+# Sort data by Status, then UPDRSIII
+heatmap_data <- heatmap_data[order(heatmap_data$Status, heatmap_data$UPDRSIII), ]
+if (all(is.na(heatmap_data$UPDRSIII))){
+    return("No UPDRSIII data")
 }
-files <- list.files("2157-Generated-Data/Clinical", pattern = "normalized.csv", full.names = TRUE)
-for (file in files) {
-    file_name <- tail(strsplit(file, "/")[[1]], 1)
-    save_path <- paste0("./R Figures/", gsub("normalized.csv", "heatmap.png", file_name))
-    heatmap_function(file, save_path, paste(gsub("normalized.csv", "", file_name), "Biomarker Heatmap"))
+
+# Extract annotation data
+annotation_data <- heatmap_data[, c("UPDRSIII", "Speech", "Status")]
+
+# Remove annotation columns from heatmap data
+feature_cols <- setdiff(colnames(heatmap_data), c("Status", "UPDRSIII", "Speech", "subjid"))
+heatmap_matrix <- as.matrix(heatmap_data[, feature_cols])
+# Calculate correlation of each feature with UPDRSIII score
+feature_correlation <- sapply(heatmap_data[, feature_cols], function(x) {
+  cor(x, heatmap_data$UPDRSIII, use = "pairwise.complete.obs")
+})
+
+# Sort features by absolute correlation with UPDRSIII
+feature_cols <- names(sort(feature_correlation, decreasing = FALSE))
+heatmap_matrix <- as.matrix(heatmap_data[, feature_cols])
+
+
+# Create color functions for annotations
+updrs_col <- colorRamp2(c(min(na.omit(annotation_data$UPDRSIII)), 
+                         median(na.omit(annotation_data$UPDRSIII)), 
+                         max(na.omit(annotation_data$UPDRSIII))), 
+                       c("blue", "white", "red"))
+
+speech_col <- colorRamp2(c(min(na.omit(annotation_data$Speech)), 
+                          median(na.omit(annotation_data$Speech)), 
+                          max(na.omit(annotation_data$Speech))), 
+                        c("blue", "white", "red"))
+correlation_col <- colorRamp2(c(min(feature_correlation), median(feature_correlation), max(feature_correlation)), c("blue", "white", "red"))
+
+# For the row annotation
+corAnnot <- rowAnnotation(
+  Correlation = anno_simple(
+    sort(feature_correlation, decreasing = FALSE), 
+    col = correlation_col,
+    simple_anno_size = unit(0.5, "cm"),
+    na_col = "white"
+  ),
+  annotation_name_gp = gpar(fontsize = 8)
+)
+
+# For the top annotation
+ha <- HeatmapAnnotation(
+  UPDRSIII = anno_simple(
+    annotation_data$UPDRSIII, 
+    col = updrs_col,
+    simple_anno_size = unit(0.5, "cm")
+  ),
+  Speech = anno_simple(
+    annotation_data$Speech, 
+    col = speech_col,
+    simple_anno_size = unit(0.5, "cm")
+  ),
+  Status = annotation_data$Status,
+  col = list(Status = c("HC" = "green", "ON" = "blue", "OFF" = "red")),
+  annotation_name_gp = gpar(fontsize = 8)
+)
+
+# Create heatmap with Status grouping
+ht <- Heatmap(t(heatmap_matrix),
+  name = "Features",
+  top_annotation = ha,
+  left_annotation = corAnnot,
+  show_row_names = TRUE,
+  show_column_names = FALSE,
+  column_split = factor(annotation_data$Status, levels = unique(annotation_data$Status)),
+  cluster_columns = FALSE,
+  cluster_rows = FALSE,  # Remove row clustering
+  show_row_dend = FALSE,  # Hide row dendrogram
+  show_column_dend = FALSE,  # Hide column dendrogram
+  column_title = NULL,
+  column_gap = unit(2, "mm"),
+  border = FALSE,
+  row_names_gp = gpar(fontsize = 4),
+  heatmap_legend_param = list(
+    title = "Z-score",
+    title_position = "leftcenter-rot",
+    legend_height = unit(3, "cm"),
+    grid_width = unit(0.8, "cm")
+  )
+
+)
+lgd_list <- list(
+  Legend(title = "UPDRSIII", col_fun = updrs_col),
+  Legend(title = "Speech", col_fun = speech_col),
+  Legend(title = "Correlation", col_fun = correlation_col)
+)
+
+# Draw the heatmap
+draw(
+  ht,
+  annotation_legend_list  = lgd_list,      # custom order
+  heatmap_legend_side     = "right",
+  annotation_legend_side  = "right"
+)
+dev.off()
+}
+for (file in list.files("./2157-Generated-Data/Clinical/Normalized/")){
+    file_path <- paste0("./2157-Generated-Data/Clinical/Normalized/", file)
+    make_distribution_heatmap(file_path)
 }

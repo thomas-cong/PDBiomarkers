@@ -3,7 +3,7 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 
-def make_boxplot(dataframes=None, dataframe_labels=None, feature=None):
+def make_boxplot(dataframes=None, dataframe_labels=None, feature=None, title=None, save_path=None):
     if dataframes is None or feature is None or dataframe_labels is None:
         raise ValueError("dataframes, dataframe_labels and feature must be provided")
     if len(dataframes) != len(dataframe_labels):
@@ -14,6 +14,8 @@ def make_boxplot(dataframes=None, dataframe_labels=None, feature=None):
         feature_values = df[feature]
         data[dataframe_labels[i]] = feature_values
     data = pd.DataFrame(data)
+    if data.empty:
+        return None
     
     f, ax = plt.subplots(figsize=(4, 6), dpi=300)
     
@@ -44,6 +46,16 @@ def make_boxplot(dataframes=None, dataframe_labels=None, feature=None):
     
     # Add grid for better readability
     ax.grid(True, linestyle='-', alpha=0.7)
+    if title is not None:
+        ax.set_title(title)
     
-    plt.show()
+    if save_path is not None:
+        plt.savefig(save_path)
+    plt.close()
     return f
+def make_boxplot_one_df(dataframe, feature, separator_col, save_path, title=None):
+    dataframes = [dataframe[dataframe[separator_col] == label] for label in sorted(dataframe[separator_col].unique())]
+    f = make_boxplot(dataframes=dataframes, dataframe_labels=sorted(dataframe[separator_col].unique()), feature=feature, title=title, save_path=save_path)
+    plt.close()
+    return f
+    
