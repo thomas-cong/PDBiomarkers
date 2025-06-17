@@ -27,8 +27,6 @@ def process_audio_file(audio_path, write_preprocess_dir = None):
     
     # Preprocess the audio file
     audioSeg = pydub.AudioSegment.from_file(audio_path, format="wav")
-    audioSeg = audio_preprocessing.resample(audioSeg)
-    audioSeg = audio_preprocessing.match_target_amplitude(audioSeg, target_dBFS=3)
     audioSeg = audio_preprocessing.trim_leading_and_lagging_silence(audioSeg)
 
     if audioSeg.duration_seconds < 0.5:
