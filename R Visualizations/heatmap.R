@@ -1,5 +1,9 @@
 library(ComplexHeatmap)
 library(circlize)
+library(RColorBrewer)         
+
+source("/Users/thomas.cong/Downloads/ResearchCode/R Visualizations/theme.R")
+
 
 # Save high-resolution PNG (3000×1000 pixels @ 300 dpi)
 make_distribution_heatmap <- function(file_path, save_path){
@@ -45,31 +49,43 @@ heatmap_matrix <- as.matrix(heatmap_data[, feature_cols])
 
 
 # Create color functions for annotations
-updrs_col <- colorRamp2(c(min(na.omit(annotation_data$UPDRSIII)),
-                         median(na.omit(annotation_data$UPDRSIII)),
-                         max(na.omit(annotation_data$UPDRSIII))),
-                        c("blue", "white", "red"))
-
-speech_col <- colorRamp2(c(min(na.omit(annotation_data$Speech)),
-                          median(na.omit(annotation_data$Speech)),
-                          max(na.omit(annotation_data$Speech))),
-                        c("blue", "white", "red"))
-correlation_col <- colorRamp2(c(min(feature_correlation),
-                                median(feature_correlation),
-                                max(feature_correlation)),
-                                c("blue", "white", "red"))
-age_col <- colorRamp2(c(min(na.omit(annotation_data$Age)),
-                        median(na.omit(annotation_data$Age)),
-                        max(na.omit(annotation_data$Age))),
-                        c("blue", "white", "red"))
-weight_col <- colorRamp2(c(min(na.omit(annotation_data$Weight)),
-                        median(na.omit(annotation_data$Weight)),
-                        max(na.omit(annotation_data$Weight))),
-                        c("blue", "white", "red"))
-col_fun <- colorRamp2(c(-3, 0, 3), c("blue", "white", "red"))
+updrs_col <- colorRamp2(
+    breaks = c(min(na.omit(annotation_data$UPDRSIII)),
+               median(na.omit(annotation_data$UPDRSIII)),
+               max(na.omit(annotation_data$UPDRSIII))),
+    colors = rev(brewer.pal(n = 7, name = "RdBu"))[c(1, 4, 7)]
+)
+speech_col <- colorRamp2(
+    breaks = c(min(na.omit(annotation_data$Speech)),
+               median(na.omit(annotation_data$Speech)),
+               max(na.omit(annotation_data$Speech))),
+    colors = rev(brewer.pal(n = 7, name = "RdBu"))[c(1, 4, 7)]
+)
+correlation_col <- colorRamp2(
+    breaks = c(min(feature_correlation),
+               median(feature_correlation),
+               max(feature_correlation)),
+    colors = rev(brewer.pal(n = 7, name = "RdBu"))[c(1, 4, 7)]
+)
+age_col <- colorRamp2(
+    breaks = c(min(na.omit(annotation_data$Age)),
+               median(na.omit(annotation_data$Age)),
+               max(na.omit(annotation_data$Age))),
+    colors = rev(brewer.pal(n = 7, name = "RdBu"))[c(1, 4, 7)]
+)
+weight_col <- colorRamp2(
+    breaks = c(min(na.omit(annotation_data$Weight)),
+               median(na.omit(annotation_data$Weight)),
+               max(na.omit(annotation_data$Weight))),
+    colors = rev(brewer.pal(n = 7, name = "RdBu"))[c(1, 4, 7)]
+)
+col_fun <- colorRamp2(
+    breaks = c(-3, 0, 3),
+    colors = rev(brewer.pal(n = 7, name = "RdBu"))[c(1, 4, 7)]
+)
 # discrete categorical colour mappings
-sex_col    <- c("Male"   = "#7ceeff",
-                "Female" = "#ff89da")
+sex_col    <- c("Male"   = "pink",
+                "Female" = "turquoise")
 status_col <- c("HC" = "green",
                 "ON" = "blue",
                 "OFF"= "red")
@@ -122,6 +138,7 @@ ha <- HeatmapAnnotation(
 
 # Create heatmap with Status grouping
 ht <- Heatmap(t(heatmap_matrix),
+  col = col_fun,
   name = "Features",
   top_annotation = ha,
   left_annotation = rowAnnotations,
@@ -175,8 +192,11 @@ if ("UPDRSIII" %in% rownames(correlation_data)) {
   new_order <- c(other, "UPDRSIII")
   correlation_data <- correlation_data[new_order, new_order]  # rows & cols
 }
-col_fun <- colorRamp2(c(-1, 0, 1), c("blue", "white", "red"))
-ht <- Heatmap(correlation_data, 
+col_fun <- colorRamp2(
+    breaks = c(-1, 0, 1),
+    colors = rev(brewer.pal(n = 7, name = "RdBu"))[c(1, 4, 7)]
+)
+ht <- Heatmap(correlation_data,
               col = col_fun,
               cluster_rows = FALSE,
               cluster_columns = FALSE,

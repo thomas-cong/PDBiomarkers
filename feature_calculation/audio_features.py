@@ -226,7 +226,6 @@ def calculate_audio_features(audio_path):
     data['harmonicity'] = calculate_harmonicity(sound)
     data['shimmer'] = calculate_shimmer(sound)
     data['jitter'] = calculate_jitter(sound)
-    data['mfcc'] = calculate_mfcc(sound)
     data['ppe'] = calculate_ppe(sound)
     data['avg_pause_duration'] = calculate_interword_pauses(sound)
     # Check for NaNs or infs in feature dict

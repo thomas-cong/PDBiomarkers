@@ -1,4 +1,5 @@
 library(ggplot2)
+library(RColorBrewer)
 
 
 make_scatterplot <- function(feature, file_path, save_path){
@@ -30,17 +31,19 @@ p <- ggplot(feature_vectors,
             position = position_dodge(0.30),
             linewidth = 1.5) +
   geom_point(aes(group  = pair_id,
-                 shape  = Sex,   # Sex → shape
+                 shape  = Sex,
                  colour = UPDRSIII,
-                 size   = Age),
+                 ),
+            size      = 4,
             alpha     = 0.8,
             position  = position_dodge(0.30),
             ) +
-            scale_size(range = c(2, 10)) +
-            scale_colour_gradient2(low = "#2600ff",
-                                   mid = "white",
-                                   high = "#ff0000") +
-            theme_bw(base_size = 15) +
+            scale_colour_distiller(
+       palette   = "RdBu",
+       direction = -1,
+       limits    = range(feature_vectors$UPDRSIII, na.rm = TRUE)
+     ) +
+            theme_update(base_size = 15) +
             theme(axis.text  = element_text(size = 15, colour = "black"),
                   axis.title = element_text(size = 15, colour = "black"),
                   strip.text = element_text(size = 15))

@@ -97,12 +97,6 @@ def process_audio_file(audio_path, write_preprocess_dir = None):
         metrics['jitter_local_db'] = audio_feats['jitter'][1]
         metrics['jitter_apq3'] = audio_feats['jitter'][2]
         metrics['jitter_apq5'] = audio_feats['jitter'][3]
-        number_of_coeffecients = 13
-        for x in range(number_of_coeffecients):
-            metrics[f'mfcc_{x}_mean'] = audio_feats['mfcc'][0][x]
-            metrics[f'mfcc_{x}_std'] = audio_feats['mfcc'][1][x]
-            metrics[f'mfcc_{x}_min'] = audio_feats['mfcc'][2][x]
-            metrics[f'mfcc_{x}_max'] = audio_feats['mfcc'][3][x]
         metrics['ppe'] = audio_feats['ppe']
         
     except Exception as e:
