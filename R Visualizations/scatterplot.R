@@ -1,5 +1,6 @@
 library(ggplot2)
 library(RColorBrewer)
+library(dplyr)
 
 
 make_scatterplot <- function(feature, file_path, save_path){
@@ -15,38 +16,46 @@ feature_vectors$UPDRSIII <- as.numeric(as.character(feature_vectors$UPDRSIII))
 feature_vectors$Age <- as.numeric(feature_vectors$Age)
 
 # drop the ON/OFF suffix to get the subject ID common to both
-feature_vectors$pair_id <- sub("(ON|OFF)$", "", 
-                               feature_vectors$subjid, 
+feature_vectors$pair_id <- sub("(ON|OFF)$", "",
+                               feature_vectors$subjid,
                                ignore.case = TRUE)
 # make sure Sex is a factor so ggplot treats it as discrete
 feature_vectors$Sex <- factor(feature_vectors$Sex)
-
 p <- ggplot(feature_vectors,
             aes(x = Status, y = .data[[feature]])) +
-  geom_boxplot(outlier.shape = NA,
-               linewidth = 1.5,
-               fill = "white") +
-  geom_line(aes(group = pair_id),
-            alpha = 0.4,
-            position = position_dodge(0.30),
-            linewidth = 1.5) +
-  geom_point(aes(group  = pair_id,
-                 shape  = Sex,
-                 colour = UPDRSIII,
-                 ),
-            size      = 4,
-            alpha     = 0.8,
-            position  = position_dodge(0.30),
-            ) +
-            scale_colour_distiller(
+    geom_boxplot(
+      outlier.shape = NA,
+      linewidth = 1.5,
+      fill = "white"
+    ) +
+    geom_line(
+      aes(group = pair_id),
+      alpha = 0.4,
+      position = position_dodge(0.30),
+      linewidth = 1.5
+    ) +
+    geom_point(
+      aes(group  = pair_id,
+          shape  = Sex,
+          colour = UPDRSIII),
+      size      = 4,
+      alpha     = 0.8,
+      position  = position_dodge(0.30)
+    ) +
+    scale_colour_distiller(
        palette   = "RdBu",
        direction = -1,
-       limits    = range(feature_vectors$UPDRSIII, na.rm = TRUE)
+       limits    = range(feature_vectors$UPDRSIII, na.rm = TRUE),
+       na.value = "grey50"
      ) +
-            theme_update(base_size = 15) +
-            theme(axis.text  = element_text(size = 15, colour = "black"),
-                  axis.title = element_text(size = 15, colour = "black"),
-                  strip.text = element_text(size = 15))
+     scale_shape(
+       na.translate = TRUE,
+       na.value     = 1
+     ) +
+     theme_update(base_size = 15) +
+     theme(axis.text  = element_text(size = 15, colour = "black"),
+           axis.title = element_text(size = 15, colour = "black"),
+           strip.text = element_text(size = 15))
 ggsave(save_path, p)
 }
 for (file in list.files("./2157-Generated-Data/Clinical/Regular/",
@@ -62,3 +71,4 @@ for (file in list.files("./2157-Generated-Data/Clinical/Regular/",
     make_scatterplot(feature, file, save_path)
   }
 }
+# make_scatterplot("aavs", "./2157-Generated-Data/Clinical/Regular/2157-Clinical-Biomarkers.csv", "test_scatter.png")

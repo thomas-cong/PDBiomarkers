@@ -1,9 +1,8 @@
 library(ComplexHeatmap)
 library(circlize)
-library(RColorBrewer)         
+library(RColorBrewer)
 
 source("/Users/thomas.cong/Downloads/ResearchCode/R Visualizations/theme.R")
-
 
 # Save high-resolution PNG (3000×1000 pixels @ 300 dpi)
 make_distribution_heatmap <- function(file_path, save_path){

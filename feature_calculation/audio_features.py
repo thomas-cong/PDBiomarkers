@@ -66,7 +66,7 @@ def generate_formant_data(audio_path):
     inlying_data.convert_dtypes()
     return inlying_data
 '''
-Given a dataframe with only bark formant data, calculate the AAVS (Standard Deviation of the Covariance Matrix)
+Given a dataframe with only formant data, calculate the AAVS (Standard Deviation of the Covariance Matrix)
 '''
 def calculate_aavs(data):
     cov_matrix = np.cov(data, rowvar=False)
@@ -75,10 +75,10 @@ def calculate_aavs(data):
     return sgv
 
 '''
-Given a dataframe with only bark formant data, calculate the hull area of the clusters
+Given a dataframe with only formant data, calculate the hull area of the clusters
 '''
 def calculate_hull_area(data):
-    kmeans = KMeans(n_clusters = 12, random_state = 0, n_init="auto")
+    kmeans = KMeans(n_clusters = 8, random_state = 0, n_init="auto")
     kmeans.fit(data)
     centers = kmeans.cluster_centers_
     hull = ConvexHull(centers)
@@ -200,7 +200,7 @@ def calculate_ppe(sound):
 def calculate_interword_pauses(sound):
     try:
         intensity = sound.to_intensity()
-        textgrid = call(intensity, "To TextGrid (silences)",  -10, 0.1, 0.1, "silent", "sounding")
+        textgrid = call(intensity, "To TextGrid (silences)",  -16, 0.1, 0.1, "silent", "sounding")
         silencetier = call(textgrid, "Extract tier", 1)
         silencetable = call(silencetier, "Down to TableOfReal", "silent")
         npauses = call(silencetable, "Get number of rows")

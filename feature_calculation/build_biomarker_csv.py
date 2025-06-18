@@ -1,13 +1,64 @@
 
 import os
+import ssl
 import json
-import pandas as pd
-from feature_calculation import transcription_functions
-from feature_calculation import audio_features
-from feature_calculation import text_features
 import pydub
-from audio_preprocessing import audio_preprocessing
+import pyfoal
+import parselmouth
+import numpy as np
+import pandas as pd
 from tqdm import tqdm
+from pathlib import Path
+from praatio import textgrid
+from feature_calculation import text_features
+from feature_calculation import audio_features
+from audio_preprocessing import audio_preprocessing
+from feature_calculation import transcription_functions
+ssl._create_default_https_context = ssl._create_unverified_context
+
+def calculate_vai(audio_path, text_path):
+    snd = parselmouth.Sound(audio_path)
+    tg = textgrid.openTextgrid(text_path, False)
+    phone_tier  = tg.tiers[0]
+
+    corner_vowels = {'i', 'u', 'æ', 'ɑ'}
+    formant_dict = {v:[] for v in corner_vowels}
+
+    for entry in phone_tier.entries:
+        label = entry.label.lower()
+        if label in corner_vowels:
+            start, end = entry.start, entry.end
+            mid_time = (start + end) / 2
+            formant = snd.to_formant_burg()
+            times = np.linspace(start, end, 10)
+            f1_vals = [formant.get_value_at_time(1, time) for time in times]
+            f2_vals = [formant.get_value_at_time(2, time) for time in times]
+            f1 = np.nanmean(f1_vals)
+            f2 = np.nanmean(f2_vals)
+            formant_dict[label].append((f1, f2))
+    avg_formants = {v:np.mean(formant_dict[v], axis=0) if formant_dict[v] else None for v in corner_vowels }
+    calculate_vai = True
+    VAI = None
+    for v in avg_formants:
+        if avg_formants[v] is None:
+            calculate_vai = False
+    if calculate_vai:
+        VAI = (avg_formants['i'][1] - avg_formants['ɑ'][0]) / (avg_formants['u'][1] + avg_formants['ɑ'][1] + avg_formants['u'][0] + avg_formants['i'][0])
+    return VAI
+def build_text_grids(audio_dir, text_dir):
+    texts = sorted([text_dir + "/" + x for x in os.listdir(text_dir) if "preprocessed" in x])
+    audios = sorted([audio_dir + "/" + x for x in os.listdir(audio_dir) if "preprocessed" in x])
+    outputs = []
+    os.makedirs(text_dir, exist_ok=True)
+    for x in os.listdir(text_dir):
+        if "preprocessed" in x:
+            outputs.append(text_dir + "/" + x.replace("preprocessed", "alignment").replace(".txt", ".TextGrid"))
+    outputs = sorted(outputs)
+    texts = [Path(x) for x in texts]
+    audios = [Path(x) for x in audios]
+    outputs = [Path(x) for x in outputs]
+    alignment = pyfoal.from_files_to_files(texts, audios, outputs, aligner='mfa')
+    return None
 
 def process_audio_file(audio_path, write_preprocess_dir = None):
     """
@@ -58,9 +109,9 @@ def process_audio_file(audio_path, write_preprocess_dir = None):
         # Calculate metrics from transcription_functions
         # Extract formant data and calculate AAVS and hull area
         formant_data = audio_features.generate_formant_data(preprocessed_path)
-        bark_formant_data = formant_data[["F1(Bark)", "F2(Bark)"]]
-        metrics['aavs'] = audio_features.calculate_aavs(bark_formant_data)
-        metrics['hull_area'] = audio_features.calculate_hull_area(bark_formant_data)
+        hz_data = formant_data[["F1(Hz)", "F2(Hz)"]]
+        metrics['aavs'] = audio_features.calculate_aavs(hz_data)
+        metrics['hull_area'] = audio_features.calculate_hull_area(hz_data)
         lexical_dict = transcription_functions.adv_speech_metrics(preprocessed_path)
         metrics['speech_rate'] = lexical_dict['speechrate(nsyll / dur)']
         metrics['articulation_rate'] = lexical_dict['articulation_rate(nsyll/phonationtime)']
@@ -101,7 +152,7 @@ def process_audio_file(audio_path, write_preprocess_dir = None):
         
     except Exception as e:
         print(f"Error processing {filename}: {str(e)}")
-        with open("feature_list.txt", "r") as f:
+        with open("./feature_list.txt", "r") as f:
             feature_list = f.read().splitlines()
         # Fill missing metrics with None
         for metric in feature_list:
@@ -132,28 +183,67 @@ def build_csv(csv_path, audio_files=None, audio_dir=None, write_preprocess_dir =
         # Get all .wav files in the directory
         audio_files = [os.path.join(audio_dir, f) for f in os.listdir(audio_dir) 
                       if f.endswith('.wav') and not f.endswith('_preprocessed.wav') and not f.endswith('_temp_preprocessed.wav')]
-    
     # Process each audio file
-    all_metrics = []
+    all_metrics = {}
     for audio_path in tqdm(audio_files):
         metrics = process_audio_file(audio_path, write_preprocess_dir)
         if metrics:
-            all_metrics.append(metrics)
-    
+            # Always use base filename (no .wav, no _preprocessed)
+            base_key = os.path.basename(audio_path).replace('.wav', '').replace('_preprocessed', '')
+            all_metrics[base_key] = metrics
+    # get text directory
+    text_dir = audio_files[0].split("/")
+    text_dir[-2] = "Text Files"
+    del text_dir[-1]
+    text_dir = "/".join(text_dir)
+    # build text grids
+    build_text_grids(audio_dir, text_dir)
+    # calculate textgrid dependent features
+    if write_preprocess_dir is None:
+        preprocessed_dir = audio_dir
+    else:
+        preprocessed_dir = write_preprocess_dir
+    preprocessed_files = [os.path.join(preprocessed_dir, f) for f in os.listdir(preprocessed_dir) if f.endswith('.wav')]
+    for audio_path in tqdm(preprocessed_files):
+        if "preprocessed" not in audio_path:
+            continue
+        tg_path = os.path.join(text_dir, os.path.basename(audio_path).replace('_preprocessed.wav', '_alignment.TextGrid'))
+        base_key = os.path.basename(audio_path).replace('.wav', '').replace('_preprocessed', '')
+        if base_key in all_metrics:
+            all_metrics[base_key]['vai'] = calculate_vai(audio_path, tg_path)
+        else:
+            print(f"Warning: base_key {base_key} not found in all_metrics for VAI assignment.")
+
     # Create DataFrame and save to CSV
+    print(all_metrics)
     if all_metrics:
-        df = pd.DataFrame(all_metrics)
+        df = pd.DataFrame.from_dict(all_metrics, orient='index').reset_index()
+        df = df.rename(columns={'index': 'filename'})
         
         # Check if CSV exists
         if os.path.exists(csv_path):
             # If CSV exists, read it and append new data
-            existing_df = pd.read_csv(csv_path)
-            
             # Remove any rows with filenames that match the new data
-            existing_df = existing_df[~existing_df['filename'].isin(df['filename'])]
-            
+            existing_df = existing_df[~existing_df['filename'].astype(str).str.strip().isin(df['filename'].astype(str).str.strip())]
+
+            # Remove duplicate columns if any
+            df = df.loc[:, ~df.columns.duplicated()]
+            existing_df = existing_df.loc[:, ~existing_df.columns.duplicated()]
+
+            # Align columns to be the same and in the same order
+            for col in df.columns:
+                if col not in existing_df.columns:
+                    existing_df[col] = None
+            for col in existing_df.columns:
+                if col not in df.columns:
+                    df[col] = None
+            existing_df = existing_df[df.columns]
+
             # Append new data
             df = pd.concat([existing_df, df], ignore_index=True)
+
+            # Drop duplicates by filename, keeping the last (newest) entry
+            df = df.drop_duplicates(subset=['filename'], keep='last')
         
         # Save to CSV
         df.to_csv(csv_path, index=False)
