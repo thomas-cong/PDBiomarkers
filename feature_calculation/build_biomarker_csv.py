@@ -17,20 +17,20 @@ from feature_calculation import transcription_functions
 ssl._create_default_https_context = ssl._create_unverified_context
 
 
-def calculate_vai(audio_path, text_path):
+def calculate_vai(audio_path, grid_path):
     """
     Calculate the Vowel Articulation Index (VAI) from an audio file and its corresponding TextGrid.
 
     Args:
         audio_path (str): Path to the audio file.
-        text_path (str): Path to the TextGrid file.
+        grid_path (str): Path to the TextGrid file.
 
     Returns:
         float or None: The VAI value if calculable, otherwise None. The VAI is calculated based on
                        the formant frequencies (F1 and F2) of the corner vowels 'i', 'u', 'æ', and 'ɑ'.
     """
     snd = parselmouth.Sound(audio_path)
-    tg = textgrid.openTextgrid(text_path, False)
+    tg = textgrid.openTextgrid(grid_path, False)
     phone_tier = tg.tiers[0]
 
     corner_vowels = {"i", "u", "æ", "ɑ"}

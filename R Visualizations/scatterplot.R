@@ -1,7 +1,7 @@
 library(ggplot2)
 library(RColorBrewer)
 library(dplyr)
-
+source("/Users/thomas.cong/Downloads/ResearchCode/R Visualizations/theme.R")
 
 make_scatterplot <- function(feature, file_path, save_path){
 data <- read.csv(file_path)

@@ -1,3 +1,9 @@
+library(ggplot2)
+library(grid)
+library(circlize)
+library(RColorBrewer)
+library(ComplexHeatmap)
+
 my_palette        <- c("#456e9d", "#f08127", "#6baeaa", "#509745", "#eac240", "#a66f97", "#ff929d", "#D22B2B", "#252525", "#ce1256","#8B4513")
 names(my_palette) <- c("blue", "orange", "turquoise", "green", "yellow", "purple", "pink", "red", "black", "fusha","brown")
 big_palette       <- c("#1f77b4","#aec7e8","#ff7f0e","#ffbb78","#2ca02c","#98df8a","#d62728",
