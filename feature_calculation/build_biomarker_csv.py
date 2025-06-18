@@ -17,12 +17,23 @@ from feature_calculation import transcription_functions
 ssl._create_default_https_context = ssl._create_unverified_context
 
 def calculate_vai(audio_path, text_path):
+    """
+    Calculate the Vowel Articulation Index (VAI) from an audio file and its corresponding TextGrid.
+
+    Args:
+        audio_path (str): Path to the audio file.
+        text_path (str): Path to the TextGrid file.
+
+    Returns:
+        float or None: The VAI value if calculable, otherwise None. The VAI is calculated based on
+                       the formant frequencies (F1 and F2) of the corner vowels 'i', 'u', 'æ', and 'ɑ'.
+    """    
     snd = parselmouth.Sound(audio_path)
     tg = textgrid.openTextgrid(text_path, False)
-    phone_tier  = tg.tiers[0]
+    phone_tier = tg.tiers[0]
 
     corner_vowels = {'i', 'u', 'æ', 'ɑ'}
-    formant_dict = {v:[] for v in corner_vowels}
+    formant_dict = {v: [] for v in corner_vowels}
 
     for entry in phone_tier.entries:
         label = entry.label.lower()
@@ -36,16 +47,32 @@ def calculate_vai(audio_path, text_path):
             f1 = np.nanmean(f1_vals)
             f2 = np.nanmean(f2_vals)
             formant_dict[label].append((f1, f2))
-    avg_formants = {v:np.mean(formant_dict[v], axis=0) if formant_dict[v] else None for v in corner_vowels }
+    avg_formants = {v: np.mean(formant_dict[v], axis=0) if formant_dict[v] else None for v in corner_vowels}
     calculate_vai = True
     VAI = None
     for v in avg_formants:
         if avg_formants[v] is None:
             calculate_vai = False
     if calculate_vai:
-        VAI = (avg_formants['i'][1] - avg_formants['ɑ'][0]) / (avg_formants['u'][1] + avg_formants['ɑ'][1] + avg_formants['u'][0] + avg_formants['i'][0])
+        VAI = (avg_formants['i'][1] - avg_formants['ɑ'][0]) / (
+            avg_formants['u'][1] + avg_formants['ɑ'][1] + avg_formants['u'][0] + avg_formants['i'][0])
     return VAI
 def build_text_grids(audio_dir, text_dir):
+    """
+    Generate TextGrid files for aligned audio and text pairs.
+
+    This function reads preprocessed text and audio files from the specified directories,
+    aligns them using the Montreal Forced Aligner (MFA), and outputs the alignment as
+    TextGrid files. The output TextGrid files are stored in the same directory where the
+    text files are located, with 'preprocessed' in the filenames replaced by 'alignment'.
+
+    Args:
+        audio_dir (str): Directory containing preprocessed audio files.
+        text_dir (str): Directory containing preprocessed text files.
+
+    Returns:
+        None
+    """
     texts = sorted([text_dir + "/" + x for x in os.listdir(text_dir) if "preprocessed" in x])
     audios = sorted([audio_dir + "/" + x for x in os.listdir(audio_dir) if "preprocessed" in x])
     outputs = []

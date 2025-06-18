@@ -16,9 +16,18 @@ import warnings
 Given an audio path, extract formant data using parselmouth
 '''
 def extract_formants(audio_path, time_step = 0.05, max_number_of_formants = 5):
+    '''
+    Extract formant data from an audio file.
+
+    Args:
+        audio_path (str): Path to the audio file.
+
+    Returns:
+        Formant contour object from parselmouth.
+    '''
     try:
         sound = parselmouth.Sound(audio_path)
-        formant_contour = sound.to_formant_burg(time_step = time_step, max_number_of_formants = max_number_of_formants)
+        formant_contour = sound.to_formant_burg(time_step=time_step, max_number_of_formants=max_number_of_formants)
         return formant_contour
     except Exception as e:
         raise Exception("Failed to extract formants from audio file: " + audio_path)
@@ -37,6 +46,15 @@ def bark_transform(hz):
 Given an audio path, generate a dataframe with bark formant data, and hz valued data (removing outliers)
 '''
 def generate_formant_data(audio_path):
+    """
+    Generate a dataframe with bark formant data and hz valued data after removing outliers using Gaussian Mixture Model.
+
+    Args:
+        audio_path (str): Path to the audio file.
+
+    Returns:
+        A pandas DataFrame with inlying formant data in both Bark and Hz scales.
+    """
     sound = parselmouth.Sound(audio_path)
     formant = sound.to_formant_burg()
     n_frames = formant.get_number_of_frames()
@@ -69,6 +87,15 @@ def generate_formant_data(audio_path):
 Given a dataframe with only formant data, calculate the AAVS (Standard Deviation of the Covariance Matrix)
 '''
 def calculate_aavs(data):
+    """
+    Calculate the AAVS (Standard Deviation of the Covariance Matrix) for a given dataframe with formant data.
+
+    Args:
+        data (pandas.DataFrame): A pandas DataFrame with formant data.
+
+    Returns:
+        float: The AAVS value.
+    """
     cov_matrix = np.cov(data, rowvar=False)
     det_cov = np.linalg.det(cov_matrix)
     sgv = np.sqrt(det_cov)
@@ -78,6 +105,15 @@ def calculate_aavs(data):
 Given a dataframe with only formant data, calculate the hull area of the clusters
 '''
 def calculate_hull_area(data):
+    """
+    Calculate the hull area of the clusters for a given dataframe with formant data.
+
+    Args:
+        data (pandas.DataFrame): A pandas DataFrame with formant data.
+
+    Returns:
+        float: The hull area value.
+    """
     kmeans = KMeans(n_clusters = 8, random_state = 0, n_init="auto")
     kmeans.fit(data)
     centers = kmeans.cluster_centers_
@@ -88,6 +124,16 @@ def calculate_hull_area(data):
 Given parselmouth Sound, calculate their fundamental frequency (mean, median, std, min, max)
 '''
 def calculate_fundamental_frequency(sound, return_type = "statistics"):
+    """
+    Calculate the fundamental frequency (mean, median, std, min, max) for a given parselmouth Sound object.
+
+    Args:
+        sound (parselmouth.Sound): A parselmouth Sound object.
+        return_type (str, optional): The type of return value. Defaults to "statistics".
+
+    Returns:
+        list: A list of fundamental frequency values if return_type is "statistics".
+    """
     pitch = sound.to_pitch()
     frequencies = pitch.selected_array['frequency']
     voiced_frequencies = frequencies[frequencies > 0]
@@ -103,6 +149,15 @@ def calculate_fundamental_frequency(sound, return_type = "statistics"):
 Given parselmouth Sound, calculate their intensity (mean, median, std, min, max)
 '''
 def calculate_intensity(sound):
+    """
+    Calculate the intensity (mean, median, std, min, max) for a given parselmouth Sound object.
+
+    Args:
+        sound (parselmouth.Sound): A parselmouth Sound object.
+
+    Returns:
+        list: A list of intensity statistics.
+    """
     intensity = sound.to_intensity()
     # average intensity (estimate of amplitude over time)
     return [np.mean(intensity), np.median(intensity), np.std(intensity), np.min(intensity), np.max(intensity)]
@@ -110,6 +165,15 @@ def calculate_intensity(sound):
 Given parselmouth Sound, calculate the harmonicity (mean, median, std, min, max)
 '''
 def calculate_harmonicity(sound):
+    """
+    Calculate the harmonicity (mean, median, std, min, max) for a given parselmouth Sound object.
+
+    Args:
+        sound (parselmouth.Sound): A parselmouth Sound object.
+
+    Returns:
+        list: A list of harmonicity statistics.
+    """
     harmonicity = call(sound, "To Harmonicity (cc)", 0.01, 75, 0.1, 1.0)
     # harmonic (voiced speech) to noise ratio
     mean = call(harmonicity, "Get mean", 0,0)
@@ -119,11 +183,15 @@ def calculate_harmonicity(sound):
     return [mean, std, min_val, max_val]
 
 def calculate_shimmer(sound):
-    '''
-    Given parselmouth Sound, calculate their shimmer
-    Shimmer: represents the change in loudness of each period
-    Period: duration of one complete cycle of a soundwave
-    '''
+    """
+    Calculate the shimmer (mean, median, std, min, max) for a given parselmouth Sound object.
+
+    Args:
+        sound (parselmouth.Sound): A parselmouth Sound object.
+
+    Returns:
+        list: A list of shimmer statistics.
+    """
     max_freq = calculate_fundamental_frequency(sound)[-1]
     min_freq = calculate_fundamental_frequency(sound)[-2]
     point_process = parselmouth.praat.call(sound, "To PointProcess (periodic, cc)", min_freq, max_freq)
@@ -147,11 +215,15 @@ def calculate_shimmer(sound):
 
     
 def calculate_jitter(sound):
-    '''
-    Given parselmouth Sound, calculate jitter features.
-    Jitter: represents the change in duration of each period.
-    Period: duration of one complete cycle of a soundwave.
-    '''
+    """
+    Calculate the jitter (mean, median, std, min, max) for a given parselmouth Sound object.
+
+    Args:
+        sound (parselmouth.Sound): A parselmouth Sound object.
+
+    Returns:
+        list: A list of jitter statistics.
+    """
     max_freq = calculate_fundamental_frequency(sound)[-1]
     min_freq = calculate_fundamental_frequency(sound)[-2]
     point_process = call(sound, "To PointProcess (periodic, cc)", min_freq, max_freq)
@@ -168,6 +240,15 @@ def calculate_jitter(sound):
     # five-point period perturbation quotient (mean diff with four neighbors)
     return [jitter_local, jitter_local_absolute, jitter_rap, jitter_ppq5]
 def calculate_mfcc(sound):
+    """
+    Calculate the MFCC (mean, median, std, min, max) for a given parselmouth Sound object.
+
+    Args:
+        sound (parselmouth.Sound): A parselmouth Sound object.
+
+    Returns:
+        list: A list of list of MFCC statistics.
+    """
     mfcc = sound.to_mfcc(number_of_coefficients=13)
     mfcc_matrix = mfcc.to_array().T
     if np.any(np.isnan(mfcc_matrix)):
@@ -178,9 +259,15 @@ def calculate_mfcc(sound):
         print("Warning: MFCC matrix contains extremely large values!")
     return np.mean(mfcc_matrix, axis=0), np.std(mfcc_matrix, axis=0), np.min(mfcc_matrix, axis=0), np.max(mfcc_matrix, axis=0)
 def calculate_ppe(sound):
-    '''
-    Reference:github.com/Mak-Sim/Troparion/blob/5126f434b96e0c1a4a41fa99dd9148f3c959cfac/Perturbation_analysis/pitch_period_entropy.m
-    '''
+    """
+    Calculate the pitch period entropy for a given parselmouth Sound object.
+
+    Args:
+        sound (parselmouth.Sound): A parselmouth Sound object.
+
+    Returns:
+        float: The pitch period entropy value.
+    """
     f0_mean = calculate_fundamental_frequency(sound)[0]
     f_min = f0_mean / np.sqrt(2)
     frequencies = calculate_fundamental_frequency(sound, "frequencies")
@@ -198,6 +285,15 @@ def calculate_ppe(sound):
     return PPE
 
 def calculate_interword_pauses(sound):
+    """
+    Calculate the interword pauses for a given parselmouth Sound object.
+
+    Args:
+        sound (parselmouth.Sound): A parselmouth Sound object.
+
+    Returns:
+        list: A list of interword pause durations.
+    """
     try:
         intensity = sound.to_intensity()
         textgrid = call(intensity, "To TextGrid (silences)",  -16, 0.1, 0.1, "silent", "sounding")
@@ -219,6 +315,15 @@ def calculate_interword_pauses(sound):
         return 0
 
 def calculate_audio_features(audio_path):
+    """
+    Calculate the audio features for a given audio file.
+
+    Args:
+        audio_path (str): The path to the audio file.
+
+    Returns:
+        dict: A dictionary containing the audio features.
+    """
     sound = parselmouth.Sound(audio_path)
     data = {}
     data['fundamental_frequency'] = calculate_fundamental_frequency(sound)
