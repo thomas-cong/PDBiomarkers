@@ -8,31 +8,33 @@ import math
 
 model = whisper.load_model("base.en")
 
-def transcribe_audio(audio_path):    
-    '''
+
+def transcribe_audio(audio_path):
+    """
     Transcribe audio with word timestamps
-    '''
+    """
     transcribed_audio = model.transcribe(audio_path)
     text_dir = audio_path.split("/")
     text_dir[-2] = "Text Files"
     del text_dir[-1]
     text_dir = "/".join(text_dir)
-# Create the Text Files directory if it doesn't exist
+    # Create the Text Files directory if it doesn't exist
     os.makedirs(text_dir, exist_ok=True)
     text_file_folder = text_dir
 
     # Extract just the filename without path and extension
-    filename = os.path.basename(audio_path).replace('.wav', '')
+    filename = os.path.basename(audio_path).replace(".wav", "")
 
     # Create the text file in the text file folder
-    with open(os.path.join(text_file_folder, filename + '.txt'), 'w') as f:
-        f.write(transcribed_audio['text'])
-    return os.path.join(text_file_folder, filename + '.txt')
+    with open(os.path.join(text_file_folder, filename + ".txt"), "w") as f:
+        f.write(transcribed_audio["text"])
+    return os.path.join(text_file_folder, filename + ".txt")
+
 
 def align_audio(audio_path):
-    '''
+    """
     Align audio with word timestamps
-    '''
+    """
     # Create the Alignment Files directory if it doesn't exist
     align_dir = audio_path.split("/")
     align_dir[-2] = "Alignment Files"
@@ -41,28 +43,37 @@ def align_audio(audio_path):
     os.makedirs(align_dir, exist_ok=True)
     result = model.transcribe(audio_path, word_timestamps=True)
     segments = result["segments"]
-    with open(os.path.join(align_dir, os.path.basename(audio_path).replace('.wav', '') + '.json'), "w", encoding="utf-8") as f:
+    with open(
+        os.path.join(
+            align_dir, os.path.basename(audio_path).replace(".wav", "") + ".json"
+        ),
+        "w",
+        encoding="utf-8",
+    ) as f:
         json.dump(segments, f, ensure_ascii=False, indent=2)
 
+
 def calculate_interword_pauses(segments):
-    '''
+    """
     Calculate interword pauses from a list of segments
-    '''
+    """
     pauses = []
     prev_end = None
     for segment in segments:
-        for word in segment['words']:
+        for word in segment["words"]:
             if prev_end is not None:
-                pause = word['start'] - prev_end
+                pause = word["start"] - prev_end
                 pauses.append(pause)
-            prev_end = word['end']
+            prev_end = word["end"]
     return pauses
+
+
 def avg_pause_duration(pauses):
 
     return sum(pauses) / len(pauses) if pauses else 0
 
-def adv_speech_metrics(filename):
 
+def adv_speech_metrics(filename):
     """
        Calculate speech rate, articulation rate, and average syllable duration from an audio file.
 
@@ -73,7 +84,7 @@ def adv_speech_metrics(filename):
            dict: A dictionary containing the calculated speech metrics.
     from ANNAFAVARO/PARKCELEB
 
-       """
+    """
 
     silencedb = -25
     mindip = 2
@@ -98,7 +109,15 @@ def adv_speech_metrics(filename):
         threshold = min_intensity
 
     # get pauses (silences) and speakingtime
-    textgrid = call(intensity, "To TextGrid (silences)", threshold3, minpause, 0.1, "silent", "sounding")
+    textgrid = call(
+        intensity,
+        "To TextGrid (silences)",
+        threshold3,
+        minpause,
+        0.1,
+        "silent",
+        "sounding",
+    )
     silencetier = call(textgrid, "Extract tier", 1)
     silencetable = call(silencetier, "Down to TableOfReal", "sounding")
     npauses = call(silencetable, "Get number of rows")
@@ -117,7 +136,14 @@ def adv_speech_metrics(filename):
     # in order to allow nonzero starting times.
     intensity_duration = call(sound_from_intensity_matrix, "Get total duration")
     intensity_max = call(sound_from_intensity_matrix, "Get maximum", 0, 0, "Parabolic")
-    point_process = call(sound_from_intensity_matrix, "To PointProcess (extrema)", "Left", "yes", "no", "Sinc70")
+    point_process = call(
+        sound_from_intensity_matrix,
+        "To PointProcess (extrema)",
+        "Left",
+        "yes",
+        "no",
+        "Sinc70",
+    )
     # estimate peak positions (all peaks)
     numpeaks = call(point_process, "Get number of points")
     t = [call(point_process, "Get time from index", i + 1) for i in range(numpeaks)]
@@ -173,31 +199,33 @@ def adv_speech_metrics(filename):
     # Insert voiced peaks in TextGrid
     call(textgrid, "Insert point tier", 1, "syllables")
     for i in range(len(voicedpeak)):
-        position = (voicedpeak[i] * timecorrection)
+        position = voicedpeak[i] * timecorrection
         call(textgrid, "Insert point", 1, position, "")
 
     # return results
     speakingrate = voicedcount / originaldur
     articulationrate = voicedcount / speakingtot
     npause = npauses - 1
-    #asd = speakingtot / voicedcount
+    # asd = speakingtot / voicedcount
     if voicedcount != 0:
         asd = speakingtot / voicedcount
     else:
         # Handle the case when the denominator is zero
         # You can assign a default value or take any other appropriate action
-        print('handling 0 voiced count --> check file')
+        print("handling 0 voiced count --> check file")
         asd = 0
-    speechrate_dictionary = {'tot_name': filename,
-                             'nsyll': voicedcount,
-                             'npause': npause,
-                             'dur(s)': originaldur,
-                             'phonationtime(s)': intensity_duration,
-                             'speechrate(nsyll / dur)': speakingrate,
-                             "articulation_rate(nsyll/phonationtime)": articulationrate,
-                             "average_syllable_dur(speakingtime/nsyll)": asd}
+    speechrate_dictionary = {
+        "tot_name": filename,
+        "nsyll": voicedcount,
+        "npause": npause,
+        "dur(s)": originaldur,
+        "phonationtime(s)": intensity_duration,
+        "speechrate(nsyll / dur)": speakingrate,
+        "articulation_rate(nsyll/phonationtime)": articulationrate,
+        "average_syllable_dur(speakingtime/nsyll)": asd,
+    }
     return speechrate_dictionary
+
 
 if __name__ == "__main__":
     adv_speech_metrics("Preprocessed 2157/71254-05-01-2025_21_08_45_preprocessed.wav")
-    

@@ -3,13 +3,16 @@ import numpy as np
 import os
 import torch
 import pandas as pd
+
 model = whisper.load_model("base")
-def get_embeddings(audio_path, aggregation = "mean"):
-    '''
+
+
+def get_embeddings(audio_path, aggregation="mean"):
+    """
     Given an audio path, return the Whisper embeddings
     audio_path: path to the audio file
     aggregation: method of aggregation, default is mean
-    '''
+    """
     # Load and preprocess audio
     audio = whisper.load_audio(audio_path)
     audio = whisper.pad_or_trim(audio)
@@ -32,16 +35,24 @@ def get_embeddings(audio_path, aggregation = "mean"):
         return np.median(embeddings_np, axis=0)
     else:
         raise ValueError("Invalid aggregation method")
-def create_embedding_df(audio_dir, aggregation = "mean"):
-    '''
+
+
+def create_embedding_df(audio_dir, aggregation="mean"):
+    """
     Given an audio directory, that are preprocessed
     (requires 'preprocessed' in filename), return a dataframe of the Whisper embeddings
     audio_dir: directory of the audio files
     aggregation: method of aggregation, default is mean
-    '''
-    audio_files = [os.path.join(audio_dir, f) for f in os.listdir(audio_dir) if f.endswith('.wav') and "preprocessed" in f]
+    """
+    audio_files = [
+        os.path.join(audio_dir, f)
+        for f in os.listdir(audio_dir)
+        if f.endswith(".wav") and "preprocessed" in f
+    ]
     embeddings = [get_embeddings(audio_file, aggregation) for audio_file in audio_files]
-    df = pd.DataFrame(embeddings, columns=[f"embedding_{i}" for i in range(len(embeddings[0]))])
-    df['filename'] = [os.path.basename(audio_file) for audio_file in audio_files]
-    df['filename'] = df['filename'].str.replace("_preprocessed.wav", "")
+    df = pd.DataFrame(
+        embeddings, columns=[f"embedding_{i}" for i in range(len(embeddings[0]))]
+    )
+    df["filename"] = [os.path.basename(audio_file) for audio_file in audio_files]
+    df["filename"] = df["filename"].str.replace("_preprocessed.wav", "")
     return df
