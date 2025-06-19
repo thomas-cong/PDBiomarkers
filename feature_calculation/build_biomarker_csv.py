@@ -29,8 +29,12 @@ def calculate_vai(audio_path, grid_path):
         float or None: The VAI value if calculable, otherwise None. The VAI is calculated based on
                        the formant frequencies (F1 and F2) of the corner vowels 'i', 'u', 'æ', and 'ɑ'.
     """
-    snd = parselmouth.Sound(audio_path)
-    tg = textgrid.openTextgrid(grid_path, False)
+    try:
+        snd = parselmouth.Sound(audio_path)
+        tg = textgrid.openTextgrid(grid_path, False)
+    except:
+        print(f"Error processing {audio_path} and {grid_path}, maybe the file was excluded?")
+        return None
     phone_tier = tg.tiers[0]
 
     corner_vowels = {"i", "u", "æ", "ɑ"}
@@ -236,24 +240,6 @@ def build_csv(csv_path, audio_files=None, audio_dir=None, results_dir=None):
     if all_metrics:
         df = pd.DataFrame.from_dict(all_metrics, orient="index").reset_index()
         df = df.rename(columns={"index": "filename"})
-        if os.path.exists(csv_path):
-            existing_df = pd.read_csv(csv_path)
-            existing_df = existing_df[
-                ~existing_df["filename"]
-                .astype(str)
-                .isin(df["filename"].astype(str))
-            ]
-            df = df.loc[:, ~df.columns.duplicated()]
-            existing_df = existing_df.loc[:, ~existing_df.columns.duplicated()]
-            for col in df.columns:
-                if col not in existing_df.columns:
-                    existing_df[col] = None
-            for col in existing_df.columns:
-                if col not in df.columns:
-                    df[col] = None
-            existing_df = existing_df[df.columns]
-            df = pd.concat([existing_df, df], ignore_index=True)
-            df = df.drop_duplicates(subset=["filename"], keep="last")
         df.to_csv(csv_path, index=False)
         print(f"Metrics saved to {csv_path}")
     else:

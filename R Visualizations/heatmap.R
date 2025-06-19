@@ -48,40 +48,31 @@ heatmap_matrix <- as.matrix(heatmap_data[, feature_cols])
 
 
 # Create color functions for annotations
-updrs_col <- colorRamp2(
-    breaks = c(min(na.omit(annotation_data$UPDRSIII)),
-               median(na.omit(annotation_data$UPDRSIII)),
-               max(na.omit(annotation_data$UPDRSIII))),
-    colors = rev(brewer.pal(n = 7, name = "RdBu"))[c(1, 4, 7)]
-)
-speech_col <- colorRamp2(
-    breaks = c(min(na.omit(annotation_data$Speech)),
-               median(na.omit(annotation_data$Speech)),
-               max(na.omit(annotation_data$Speech))),
-    colors = rev(brewer.pal(n = 7, name = "RdBu"))[c(1, 4, 7)]
-)
-correlation_col <- colorRamp2(
-    breaks = c(min(feature_correlation),
-               median(feature_correlation),
-               max(feature_correlation)),
-    colors = rev(brewer.pal(n = 7, name = "RdBu"))[c(1, 4, 7)]
-)
-age_col <- colorRamp2(
-    breaks = c(min(na.omit(annotation_data$Age)),
-               median(na.omit(annotation_data$Age)),
-               max(na.omit(annotation_data$Age))),
-    colors = rev(brewer.pal(n = 7, name = "RdBu"))[c(1, 4, 7)]
-)
-weight_col <- colorRamp2(
-    breaks = c(min(na.omit(annotation_data$Weight)),
-               median(na.omit(annotation_data$Weight)),
-               max(na.omit(annotation_data$Weight))),
-    colors = rev(brewer.pal(n = 7, name = "RdBu"))[c(1, 4, 7)]
-)
+make_safe_colorRamp2 <- function(vec, palette) {
+  vals <- na.omit(vec)
+  uniq_vals <- unique(vals)
+  if (length(uniq_vals) < 2) {
+    # fallback: two breaks, both gray
+    return(colorRamp2(c(0, 1), c("gray", "gray")))
+  } else {
+    return(colorRamp2(
+      breaks = c(min(vals), median(vals), max(vals)),
+      colors = palette
+    ))
+  }
+}
+
+palette <- rev(brewer.pal(n = 7, name = "RdBu"))[c(1, 4, 7)]
+updrs_col <- make_safe_colorRamp2(annotation_data$UPDRSIII, palette)
+speech_col <- make_safe_colorRamp2(annotation_data$Speech, palette)
+correlation_col <- make_safe_colorRamp2(feature_correlation, palette)
+age_col <- make_safe_colorRamp2(annotation_data$Age, palette)
+weight_col <- make_safe_colorRamp2(annotation_data$Weight, palette)
 col_fun <- colorRamp2(
     breaks = c(-3, 0, 3),
-    colors = rev(brewer.pal(n = 7, name = "RdBu"))[c(1, 4, 7)]
+    colors = palette
 )
+
 # discrete categorical colour mappings
 sex_col    <- c("Male"   = "pink",
                 "Female" = "turquoise")
@@ -152,7 +143,8 @@ ht <- Heatmap(t(heatmap_matrix),
   column_gap = unit(2, "mm"),
   border = FALSE,
   row_names_gp = gpar(fontsize = 4),
-  show_heatmap_legend = FALSE
+  show_heatmap_legend = FALSE,
+  na_col = "gray"
 )
 lgd_list <- list(
     Legend(title = "Z-score", col_fun = col_fun),
@@ -203,7 +195,8 @@ ht <- Heatmap(correlation_data,
               show_column_names = TRUE,
               show_heatmap_legend = FALSE,
               row_names_gp = gpar(fontsize = 6),
-              column_names_gp = gpar(fontsize = 6))
+              column_names_gp = gpar(fontsize = 6),
+              na_col = "gray")
 lgd_list <- list(
     Legend(title = "Correlation", col_fun = col_fun)
 )
