@@ -9,15 +9,29 @@ import math
 model = whisper.load_model("base.en")
 
 
-def transcribe_audio(audio_path):
+def transcribe_audio(audio_path, text_dir=None):
+    """
+    Transcribe audio with word timestamps
+    """
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    if text_dir is None:
+        text_dir = os.path.join(script_dir, "Text Files")
+    os.makedirs(text_dir, exist_ok=True)
+    filename = os.path.basename(audio_path).replace(".wav", "")
+    transcribed_audio = model.transcribe(audio_path)
+    with open(os.path.join(text_dir, filename + ".txt"), "w") as f:
+        f.write(transcribed_audio["text"])
+    return os.path.join(text_dir, filename + ".txt")
+
     """
     Transcribe audio with word timestamps
     """
     transcribed_audio = model.transcribe(audio_path)
-    text_dir = audio_path.split("/")
-    text_dir[-2] = "Text Files"
-    del text_dir[-1]
-    text_dir = "/".join(text_dir)
+    if text_dir is None:
+        text_dir = audio_path.split("/")
+        text_dir[-2] = "Text Files"
+        del text_dir[-1]
+        text_dir = "/".join(text_dir)
     # Create the Text Files directory if it doesn't exist
     os.makedirs(text_dir, exist_ok=True)
     text_file_folder = text_dir
@@ -31,15 +45,33 @@ def transcribe_audio(audio_path):
     return os.path.join(text_file_folder, filename + ".txt")
 
 
-def align_audio(audio_path):
+def align_audio(audio_path, align_dir=None):
+    """
+    Align audio with word timestamps
+    """
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    if align_dir is None:
+        align_dir = os.path.join(script_dir, "Alignment Files")
+    os.makedirs(align_dir, exist_ok=True)
+    filename = os.path.basename(audio_path).replace(".wav", "")
+    result = model.transcribe(audio_path, word_timestamps=True)
+    segments = result["segments"]
+    with open(
+        os.path.join(align_dir, filename + ".json"),
+        "w",
+        encoding="utf-8",
+    ) as f:
+        json.dump(segments, f, ensure_ascii=False, indent=2)
+
     """
     Align audio with word timestamps
     """
     # Create the Alignment Files directory if it doesn't exist
-    align_dir = audio_path.split("/")
-    align_dir[-2] = "Alignment Files"
-    del align_dir[-1]
-    align_dir = "/".join(align_dir)
+    if align_dir is None:
+        align_dir = audio_path.split("/")
+        align_dir[-2] = "Alignment Files"
+        del align_dir[-1]
+        align_dir = "/".join(align_dir)
     os.makedirs(align_dir, exist_ok=True)
     result = model.transcribe(audio_path, word_timestamps=True)
     segments = result["segments"]

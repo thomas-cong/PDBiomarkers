@@ -67,38 +67,22 @@ def calculate_vai(audio_path, grid_path):
     return VAI
 
 
-def build_text_grids(audio_dir, text_dir):
+def build_text_grids(preprocessed_dir, textgrid_dir):
     """
     Generate TextGrid files for aligned audio and text pairs.
-
-    This function reads preprocessed text and audio files from the specified directories,
-    aligns them using the Montreal Forced Aligner (MFA), and outputs the alignment as
-    TextGrid files. The output TextGrid files are stored in the same directory where the
-    text files are located, with 'preprocessed' in the filenames replaced by 'alignment'.
-
-    Args:
-        audio_dir (str): Directory containing preprocessed audio files.
-        text_dir (str): Directory containing preprocessed text files.
-
-    Returns:
-        None
+    TextGrids are written to the TextGrid subfolder in Results-.
     """
     texts = sorted(
-        [text_dir + "/" + x for x in os.listdir(text_dir) if "preprocessed" in x]
+        [os.path.join(os.path.dirname(preprocessed_dir), "Text", os.path.basename(x).replace(".wav", ".txt"))
+         for x in os.listdir(preprocessed_dir) if x.endswith("_preprocessed.wav")]
     )
     audios = sorted(
-        [audio_dir + "/" + x for x in os.listdir(audio_dir) if "preprocessed" in x]
+        [os.path.join(preprocessed_dir, x) for x in os.listdir(preprocessed_dir) if x.endswith("_preprocessed.wav")]
     )
-    outputs = []
-    os.makedirs(text_dir, exist_ok=True)
-    for x in os.listdir(text_dir):
-        if "preprocessed" in x:
-            outputs.append(
-                text_dir
-                + "/"
-                + x.replace("preprocessed", "alignment").replace(".txt", ".TextGrid")
-            )
-    outputs = sorted(outputs)
+    outputs = sorted([
+        os.path.join(textgrid_dir, os.path.basename(x).replace("_preprocessed.wav", "_alignment.TextGrid"))
+        for x in os.listdir(preprocessed_dir) if x.endswith(".wav")
+    ])
     texts = [Path(x) for x in texts]
     audios = [Path(x) for x in audios]
     outputs = [Path(x) for x in outputs]
@@ -106,78 +90,48 @@ def build_text_grids(audio_dir, text_dir):
     return None
 
 
-def process_audio_file(audio_path, write_preprocess_dir=None):
+def process_audio_file(audio_path, results_dir):
     """
-    Process a single audio file and extract all metrics
-
-    Args:
-        audio_path: Path to the audio file
-
-    Returns:
-        Dictionary containing all metrics for the audio file
+    Process a single audio file and extract all metrics.
+    All outputs are written into Results- subfolders.
     """
-    # Get filename without extension for CSV row label
+    preprocessed_dir = os.path.join(results_dir, "Preprocessed")
+    text_dir = os.path.join(results_dir, "Text")
+    align_dir = os.path.join(results_dir, "Alignments")
+    for d in [preprocessed_dir, text_dir, align_dir]:
+        os.makedirs(d, exist_ok=True)
     filename = os.path.basename(audio_path).replace(".wav", "")
-
-    # Create a dictionary to store metrics
     metrics = {"filename": filename}
-
-    # Preprocess the audio file
+    # Preprocess audio
     audioSeg = pydub.AudioSegment.from_file(audio_path, format="wav")
     audioSeg = audio_preprocessing.trim_leading_and_lagging_silence(audioSeg)
-
     if audioSeg.duration_seconds < 0.5:
         print(f"Audio file {filename} is too short, skipping...")
         return None
-    # Create a temporary trimmed file path
-    if write_preprocess_dir is not None:
-        os.makedirs(write_preprocess_dir, exist_ok=True)
-        preprocessed_path = os.path.join(
-            write_preprocess_dir, f"{filename}_preprocessed.wav"
-        )
-        audioSeg.export(preprocessed_path, format="wav")
-    else:
-        preprocessed_path = os.path.join(
-            os.path.dirname(audio_path), f"{filename}_preprocessed.wav"
-        )
-        audioSeg.export(preprocessed_path, format="wav")
-    text_path = transcription_functions.transcribe_audio(preprocessed_path)
-
-    # TODO: CHECK THE ALIGNMENT OF FUNCTION INDEXING
+    preprocessed_path = os.path.join(preprocessed_dir, f"{filename}_preprocessed.wav")
+    audioSeg.export(preprocessed_path, format="wav")
+    # Transcribe and align
+    text_path = transcription_functions.transcribe_audio(preprocessed_path, text_dir)
     try:
-        # Get alignment data
-        alignment_path = preprocessed_path.split("/")
-        alignment_path[-2] = "Alignment Files"
-        alignment_path = "/".join(alignment_path)
-        alignment_path = alignment_path.replace(".wav", ".json")
-        transcription_functions.align_audio(preprocessed_path)
-
-        # Load the alignment data
+        alignment_path = os.path.join(align_dir, f"{filename}_preprocessed.json")
+        transcription_functions.align_audio(preprocessed_path, align_dir)
         with open(alignment_path, "r", encoding="utf-8") as f:
             segments = json.load(f)
-
-        # Calculate metrics from transcription_functions
-        # Extract formant data and calculate AAVS and hull area
+        # Calculate metrics
         formant_data = audio_features.generate_formant_data(preprocessed_path)
         hz_data = formant_data[["F1(Hz)", "F2(Hz)"]]
         metrics["aavs"] = audio_features.calculate_aavs(hz_data)
         metrics["hull_area"] = audio_features.calculate_hull_area(hz_data)
         lexical_dict = transcription_functions.adv_speech_metrics(preprocessed_path)
         metrics["speech_rate"] = lexical_dict["speechrate(nsyll / dur)"]
-        metrics["articulation_rate"] = lexical_dict[
-            "articulation_rate(nsyll/phonationtime)"
-        ]
-        metrics["average_syllable_duration"] = lexical_dict[
-            "average_syllable_dur(speakingtime/nsyll)"
-        ]
-
+        metrics["articulation_rate"] = lexical_dict["articulation_rate(nsyll/phonationtime)"]
+        metrics["average_syllable_duration"] = lexical_dict["average_syllable_dur(speakingtime/nsyll)"]
         text_feats = text_features.calculate_text_features(text_path)
         metrics["avg_word_length"] = text_feats["avg_word_length"]
         metrics["content_richness"] = text_feats["content_richness"]
         metrics["mattr"] = text_feats["mattr"]
         metrics["phrase_patterns"] = text_feats["phrase_patterns"]
         metrics["sentence_length"] = text_feats["sentence_length"]
-
         audio_feats = audio_features.calculate_audio_features(preprocessed_path)
         metrics["avg_pause_duration"] = audio_feats["avg_pause_duration"]
         metrics["ff_mean"] = audio_feats["fundamental_frequency"][0]
@@ -203,40 +157,35 @@ def process_audio_file(audio_path, write_preprocess_dir=None):
         metrics["jitter_apq3"] = audio_feats["jitter"][2]
         metrics["jitter_apq5"] = audio_feats["jitter"][3]
         metrics["ppe"] = audio_feats["ppe"]
-
     except Exception as e:
         print(f"Error processing {filename}: {str(e)}")
         with open("./feature_list.txt", "r") as f:
             feature_list = f.read().splitlines()
-        # Fill missing metrics with None
         for metric in feature_list:
             if metric not in metrics:
                 metrics[metric] = None
-
     return metrics
 
-
-def build_csv(csv_path, audio_files=None, audio_dir=None, write_preprocess_dir=None):
+def build_csv(csv_path, audio_files=None, audio_dir=None, results_dir=None):
     """
-    Generate a CSV file with metrics from transcriptionFunctions and formantExtraction
-
-    Args:
-        csv_path: Path to save the CSV file
-        audio_files: List of audio file paths to process (optional)
-        audio_dir: Directory containing audio files to process (optional)
-
-    If both audio_files and audio_dir are provided, audio_files takes precedence.
-    If neither is provided, the function will look for .wav files in the 'Audio Files' directory.
+    Generate a CSV file with metrics from transcriptionFunctions and formantExtraction.
+    All outputs are written into the Results- folder with subfolders for each type.
     """
+    # Set up Results- directory and subfolders
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    if results_dir is None:
+        results_dir = os.path.join(script_dir, "Results-")
+    preprocessed_dir = os.path.join(results_dir, "Preprocessed")
+    text_dir = os.path.join(results_dir, "Text")
+    align_dir = os.path.join(results_dir, "Alignments")
+    textgrid_dir = os.path.join(results_dir, "TextGrid")
+    for d in [results_dir, preprocessed_dir, text_dir, align_dir, textgrid_dir]:
+        os.makedirs(d, exist_ok=True)
+
     # Determine which audio files to process
     if audio_files is None:
         if audio_dir is None:
-            # Default to 'Audio Files' directory
-            audio_dir = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), "Audio Files"
-            )
-
-        # Get all .wav files in the directory
+            audio_dir = os.path.join(script_dir, "Audio Files")
         audio_files = [
             os.path.join(audio_dir, f)
             for f in os.listdir(audio_dir)
@@ -247,27 +196,17 @@ def build_csv(csv_path, audio_files=None, audio_dir=None, write_preprocess_dir=N
     # Process each audio file
     all_metrics = {}
     for audio_path in tqdm(audio_files):
-        metrics = process_audio_file(audio_path, write_preprocess_dir)
+        metrics = process_audio_file(audio_path, results_dir)
         if metrics:
-            # Always use base filename (no .wav, no _preprocessed)
             base_key = (
                 os.path.basename(audio_path)
                 .replace(".wav", "")
                 .replace("_preprocessed", "")
             )
             all_metrics[base_key] = metrics
-    # get text directory
-    text_dir = audio_files[0].split("/")
-    text_dir[-2] = "Text Files"
-    del text_dir[-1]
-    text_dir = "/".join(text_dir)
     # build text grids
-    build_text_grids(audio_dir, text_dir)
+    build_text_grids(preprocessed_dir, textgrid_dir)
     # calculate textgrid dependent features
-    if write_preprocess_dir is None:
-        preprocessed_dir = audio_dir
-    else:
-        preprocessed_dir = write_preprocess_dir
     preprocessed_files = [
         os.path.join(preprocessed_dir, f)
         for f in os.listdir(preprocessed_dir)
@@ -277,7 +216,7 @@ def build_csv(csv_path, audio_files=None, audio_dir=None, write_preprocess_dir=N
         if "preprocessed" not in audio_path:
             continue
         tg_path = os.path.join(
-            text_dir,
+            textgrid_dir,
             os.path.basename(audio_path).replace(
                 "_preprocessed.wav", "_alignment.TextGrid"
             ),
@@ -293,29 +232,19 @@ def build_csv(csv_path, audio_files=None, audio_dir=None, write_preprocess_dir=N
             print(
                 f"Warning: base_key {base_key} not found in all_metrics for VAI assignment."
             )
-
     # Create DataFrame and save to CSV
-    print(all_metrics)
     if all_metrics:
         df = pd.DataFrame.from_dict(all_metrics, orient="index").reset_index()
         df = df.rename(columns={"index": "filename"})
-
-        # Check if CSV exists
         if os.path.exists(csv_path):
-            # If CSV exists, read it and append new data
-            # Remove any rows with filenames that match the new data
+            existing_df = pd.read_csv(csv_path)
             existing_df = existing_df[
                 ~existing_df["filename"]
                 .astype(str)
-                .str.strip()
-                .isin(df["filename"].astype(str).str.strip())
+                .isin(df["filename"].astype(str))
             ]
-
-            # Remove duplicate columns if any
             df = df.loc[:, ~df.columns.duplicated()]
             existing_df = existing_df.loc[:, ~existing_df.columns.duplicated()]
-
-            # Align columns to be the same and in the same order
             for col in df.columns:
                 if col not in existing_df.columns:
                     existing_df[col] = None
@@ -323,19 +252,12 @@ def build_csv(csv_path, audio_files=None, audio_dir=None, write_preprocess_dir=N
                 if col not in df.columns:
                     df[col] = None
             existing_df = existing_df[df.columns]
-
-            # Append new data
             df = pd.concat([existing_df, df], ignore_index=True)
-
-            # Drop duplicates by filename, keeping the last (newest) entry
             df = df.drop_duplicates(subset=["filename"], keep="last")
-
-        # Save to CSV
         df.to_csv(csv_path, index=False)
         print(f"Metrics saved to {csv_path}")
     else:
         print("No audio files were processed.")
-
 
 if __name__ == "__main__":
     pass
