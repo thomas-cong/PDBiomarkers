@@ -3,7 +3,7 @@ library(RColorBrewer)
 library(dplyr)
 source("/Users/thomas.cong/Downloads/ResearchCode/R Visualizations/theme.R")
 
-make_scatterplot <- function(feature, file_path, save_path){
+make_barplot <- function(feature, file_path, save_path){
 data <- read.csv(file_path)
 feature_vectors <- subset(data, 
                           select = c("subjid",
@@ -68,7 +68,6 @@ for (file in list.files("./2157-Generated-Data/Clinical/Regular/",
   features <- read.csv(file)
   for (feature in colnames(features)){
     save_path <- file.path(folder, paste0(feature, "_scatterplot.png"))
-    make_scatterplot(feature, file, save_path)
+    make_barplot(feature, file, save_path)
   }
 }
-# make_scatterplot("aavs", "./2157-Generated-Data/Clinical/Regular/2157-Clinical-Biomarkers.csv", "test_scatter.png")
