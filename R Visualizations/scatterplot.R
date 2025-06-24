@@ -21,12 +21,16 @@ source("/Users/thomas.cong/Downloads/ResearchCode/R Visualizations/theme.R")
 #' @return Invisibly returns the ggplot object.
 #' @examples
 #' # make_scatterplot("YFD", "aavs", "path/to/data.csv", "path/to/plot.png")
-make_scatterplot <- function(x_feature, y_feature, file_path, save_path) {
+make_scatterplot <- function(x_feature, y_feature, file_path, save_path, grouping_feature = NULL) {
   
   # --- 1. Load and Validate Data ---
   data <- read.csv(file_path)
   
   required_cols <- c(x_feature, y_feature)
+  if (!is.null(grouping_feature)) {
+    required_cols <- c(required_cols, grouping_feature)
+  }
+  
   if (!all(required_cols %in% colnames(data))) {
     missing_cols <- required_cols[!required_cols %in% colnames(data)]
     stop(paste("Error: The following required columns are missing from the data:", paste(missing_cols, collapse = ", ")))
@@ -53,50 +57,38 @@ make_scatterplot <- function(x_feature, y_feature, file_path, save_path) {
   data[[z_score_col_name]] <- capped_z_scores
 
   # --- 3. Statistical Analysis ---
-  # Calculate Pearson correlation on the transformed data
-  stats_label <- "Correlation not available"
-  if (nrow(data) > 2) {
-    corr_test <- cor.test(data[[x_feature]], data[[z_score_col_name]], method = "pearson")
-    r_value <- corr_test$estimate
-    r_squared <- r_value^2
-    
-    # Create label for annotation
-    stats_label <- paste(
-      "r = ", format(r_value, digits = 2),
-      "  R² = ", format(r_squared, digits = 2)
-    )
-  }
+  # Regression line and correlation have been removed.
   
   # --- 4. Build Plot ---
   # Initialize plot
   p <- ggplot(data, aes(x = .data[[x_feature]], y = .data[[z_score_col_name]]))
   
-  # Add points layer first, so it's underneath the regression line
+  # Add lines first so points are drawn on top
+  if (!is.null(grouping_feature)) {
+    if ("Status" %in% colnames(data)) {
+        p <- p + geom_line(aes(group = .data[[grouping_feature]], color = Status), alpha = 0.3, linewidth = 0.8)
+    } else {
+        p <- p + geom_line(aes(group = .data[[grouping_feature]]), alpha = 0.3, linewidth = 0.8)
+    }
+  }
+
+  # Add points layer
   if ("Status" %in% colnames(data)) {
-    p <- p + geom_point(aes(color = Status), alpha = 0.6, size = 3)
+    p <- p + geom_point(aes(color = Status), alpha = 0.8, size = 3)
   } else {
-    p <- p + geom_point(alpha = 0.6, size = 3)
+    p <- p + geom_point(alpha = 0.8, size = 3)
   }
   
-  # Add regression line and other elements on top
+  # Add labels
   p <- p +
-    geom_smooth(method = "lm", se = TRUE, color = "#377eb8", linewidth = 1) +
     labs(
       title = paste("Z-score of", y_feature, "vs.", x_feature),
       x = x_feature,
       y = paste("Z-score of", y_feature, "(capped at ±3)")
-    ) +
-    annotate(
-      "text",
-      x = Inf, y = Inf,
-      label = stats_label,
-      hjust = 1.1, vjust = 2,
-      size = 5,
-      fontface = "italic"
     )
   
   # --- 4. Save Plot ---
-  ggsave(save_path, p, width = 8, height = 6, dpi = 300)
+  ggsave(save_path, p, width = 12, height = 6, dpi = 300)
   print(paste("Plot saved to", save_path))
   
   invisible(p)
@@ -168,14 +160,15 @@ csv_file_path <- "/Users/thomas.cong/Downloads/ResearchCode/ParkCelebCode/Park_C
 x_axis_feature <- "YFD"
 features <- read.csv(csv_file_path)
 for (feature in colnames(features)){
-    if (feature %in% c("subjid", "Status", "Age", "Sex", "UPDRSIII", "YFD")){
+    if (feature %in% c("subjid", "Status", "Age", "Sex", "UPDRSIII", "YFD", "filename")){
         next
     }
     make_scatterplot(
         x_feature = x_axis_feature,
         y_feature = feature,
         file_path = csv_file_path,
-        save_path = paste0("/Users/thomas.cong/Downloads/ResearchCode/ParkCelebCode/LongitudinalProgression/", x_axis_feature, "_vs_", feature, "_scatterplot.png")
+        save_path = paste0("/Users/thomas.cong/Downloads/ResearchCode/ParkCelebCode/LongitudinalProgression/", x_axis_feature, "_vs_", feature, "_scatterplot.png"),
+        grouping_feature = "subjid"
     )
     make_violin_plot(
         x_feature = x_axis_feature,
@@ -184,3 +177,18 @@ for (feature in colnames(features)){
         save_path = paste0("/Users/thomas.cong/Downloads/ResearchCode/ParkCelebCode/LongitudinalProgression/", x_axis_feature, "_vs_", feature, "_violinplot.png")
         )
     }
+first_last_file_path <- "/Users/thomas.cong/Downloads/ResearchCode/ParkCelebCode/Park_Celeb_Biomarkers_First_Last.csv"
+first_last_data <- read.csv(first_last_file_path)
+for (feature in colnames(first_last_data)){
+    if (feature %in% c("subjid", "Status", "Age", "Sex", "UPDRSIII", "YFD", "filename")){
+        next
+    }
+    make_scatterplot(
+        x_feature = x_axis_feature,
+        y_feature = feature,
+        file_path = first_last_file_path,
+        save_path = paste0("/Users/thomas.cong/Downloads/ResearchCode/ParkCelebCode/LongitudinalProgression/", x_axis_feature, "_vs_", feature, "_first_last_scatterplot.png"),
+        grouping_feature = "subjid"
+    )
+    }
+

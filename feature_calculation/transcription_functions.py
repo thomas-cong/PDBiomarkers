@@ -29,8 +29,6 @@ def transcribe_audio(audio_path, text_dir=None):
     return output_path
 
 
-
-
 def align_audio(audio_path, align_dir=None):
     """
     Align audio with word timestamps using whisper, saving to a JSON file.
@@ -50,7 +48,7 @@ def align_audio(audio_path, align_dir=None):
     segments = result["segments"]
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(segments, f, ensure_ascii=False, indent=2)
-    
+
     return output_path
 
 
