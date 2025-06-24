@@ -1,4 +1,6 @@
 import os
+import multiprocessing
+import functools
 import ssl
 import json
 import pydub
@@ -13,6 +15,9 @@ from feature_calculation import text_features
 from feature_calculation import audio_features
 from audio_preprocessing import audio_preprocessing
 from feature_calculation import transcription_functions
+import warnings
+
+warnings.filterwarnings("ignore")
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
@@ -33,7 +38,9 @@ def calculate_vai(audio_path, grid_path):
         snd = parselmouth.Sound(audio_path)
         tg = textgrid.openTextgrid(grid_path, False)
     except:
-        print(f"Error processing {audio_path} and {grid_path}, maybe the file was excluded?")
+        print(
+            f"Error processing {audio_path} and {grid_path}, maybe the file was excluded?"
+        )
         return None
     phone_tier = tg.tiers[0]
 
@@ -46,12 +53,10 @@ def calculate_vai(audio_path, grid_path):
             start, end = entry.start, entry.end
             mid_time = (start + end) / 2
             formant = snd.to_formant_burg()
-            times = np.linspace(start, end, 10)
-            f1_vals = [formant.get_value_at_time(1, time) for time in times]
-            f2_vals = [formant.get_value_at_time(2, time) for time in times]
-            f1 = np.nanmean(f1_vals)
-            f2 = np.nanmean(f2_vals)
+            f1 = formant.get_value_at_time(1, mid_time)
+            f2 = formant.get_value_at_time(2, mid_time)
             formant_dict[label].append((f1, f2))
+
     avg_formants = {
         v: np.mean(formant_dict[v], axis=0) if formant_dict[v] else None
         for v in corner_vowels
@@ -77,16 +82,33 @@ def build_text_grids(preprocessed_dir, textgrid_dir):
     TextGrids are written to the TextGrid subfolder in Results-.
     """
     texts = sorted(
-        [os.path.join(os.path.dirname(preprocessed_dir), "Text", os.path.basename(x).replace(".wav", ".txt"))
-         for x in os.listdir(preprocessed_dir) if x.endswith("_preprocessed.wav")]
+        [
+            os.path.join(
+                os.path.dirname(preprocessed_dir),
+                "Text",
+                os.path.basename(x).replace(".wav", ".txt"),
+            )
+            for x in os.listdir(preprocessed_dir)
+            if x.endswith("_preprocessed.wav")
+        ]
     )
     audios = sorted(
-        [os.path.join(preprocessed_dir, x) for x in os.listdir(preprocessed_dir) if x.endswith("_preprocessed.wav")]
+        [
+            os.path.join(preprocessed_dir, x)
+            for x in os.listdir(preprocessed_dir)
+            if x.endswith("_preprocessed.wav")
+        ]
     )
-    outputs = sorted([
-        os.path.join(textgrid_dir, os.path.basename(x).replace("_preprocessed.wav", "_alignment.TextGrid"))
-        for x in os.listdir(preprocessed_dir) if x.endswith(".wav")
-    ])
+    outputs = sorted(
+        [
+            os.path.join(
+                textgrid_dir,
+                os.path.basename(x).replace("_preprocessed.wav", "_alignment.TextGrid"),
+            )
+            for x in os.listdir(preprocessed_dir)
+            if x.endswith(".wav")
+        ]
+    )
     texts = [Path(x) for x in texts]
     audios = [Path(x) for x in audios]
     outputs = [Path(x) for x in outputs]
@@ -128,8 +150,12 @@ def process_audio_file(audio_path, results_dir):
         metrics["hull_area"] = audio_features.calculate_hull_area(hz_data)
         lexical_dict = transcription_functions.adv_speech_metrics(preprocessed_path)
         metrics["speech_rate"] = lexical_dict["speechrate(nsyll / dur)"]
-        metrics["articulation_rate"] = lexical_dict["articulation_rate(nsyll/phonationtime)"]
-        metrics["average_syllable_duration"] = lexical_dict["average_syllable_dur(speakingtime/nsyll)"]
+        metrics["articulation_rate"] = lexical_dict[
+            "articulation_rate(nsyll/phonationtime)"
+        ]
+        metrics["average_syllable_duration"] = lexical_dict[
+            "average_syllable_dur(speakingtime/nsyll)"
+        ]
         text_feats = text_features.calculate_text_features(text_path)
         metrics["avg_word_length"] = text_feats["avg_word_length"]
         metrics["content_richness"] = text_feats["content_richness"]
@@ -170,6 +196,7 @@ def process_audio_file(audio_path, results_dir):
                 metrics[metric] = None
     return metrics
 
+
 def build_csv(csv_path, audio_files=None, audio_dir=None, results_dir=None):
     """
     Generate a CSV file with metrics from transcriptionFunctions and formantExtraction.
@@ -197,45 +224,56 @@ def build_csv(csv_path, audio_files=None, audio_dir=None, results_dir=None):
             and not f.endswith("_preprocessed.wav")
             and not f.endswith("_temp_preprocessed.wav")
         ]
-    # Process each audio file
+
+    if not audio_files:
+        print("No .wav files found to process.")
+        return
+
     all_metrics = {}
-    for audio_path in tqdm(audio_files):
-        metrics = process_audio_file(audio_path, results_dir)
-        if metrics:
-            base_key = (
-                os.path.basename(audio_path)
-                .replace(".wav", "")
-                .replace("_preprocessed", "")
-            )
-            all_metrics[base_key] = metrics
-    # build text grids
-    build_text_grids(preprocessed_dir, textgrid_dir)
-    # calculate textgrid dependent features
-    preprocessed_files = [
-        os.path.join(preprocessed_dir, f)
-        for f in os.listdir(preprocessed_dir)
-        if f.endswith(".wav")
-    ]
-    for audio_path in tqdm(preprocessed_files):
-        if "preprocessed" not in audio_path:
-            continue
-        tg_path = os.path.join(
-            textgrid_dir,
-            os.path.basename(audio_path).replace(
-                "_preprocessed.wav", "_alignment.TextGrid"
-            ),
+    # Process each audio file in parallel
+    with multiprocessing.Pool() as pool:
+        process_file_with_results = functools.partial(
+            process_audio_file, results_dir=results_dir
         )
-        base_key = (
-            os.path.basename(audio_path)
-            .replace(".wav", "")
-            .replace("_preprocessed", "")
-        )
-        if base_key in all_metrics:
-            all_metrics[base_key]["vai"] = calculate_vai(audio_path, tg_path)
-        else:
-            print(
-                f"Warning: base_key {base_key} not found in all_metrics for VAI assignment."
+        results = list(
+            tqdm(
+                pool.imap_unordered(process_file_with_results, audio_files),
+                total=len(audio_files),
+                desc="Processing audio files",
             )
+        )
+        for r in results:
+            if r:
+                all_metrics[r["filename"]] = r
+
+    # # build text grids
+    # build_text_grids(preprocessed_dir, textgrid_dir)
+    # # calculate textgrid dependent features
+    # preprocessed_files = [
+    #     os.path.join(preprocessed_dir, f)
+    #     for f in os.listdir(preprocessed_dir)
+    #     if f.endswith(".wav")
+    # ]
+    # for audio_path in tqdm(preprocessed_files, desc="Calculating VAI"):
+    #     if "preprocessed" not in audio_path:
+    #         continue
+    #     tg_path = os.path.join(
+    #         textgrid_dir,
+    #         os.path.basename(audio_path).replace(
+    #             "_preprocessed.wav", "_alignment.TextGrid"
+    #         ),
+    #     )
+    #     base_key = (
+    #         os.path.basename(audio_path)
+    #         .replace(".wav", "")
+    #         .replace("_preprocessed", "")
+    #     )
+    #     if base_key in all_metrics:
+    #         all_metrics[base_key]["vai"] = calculate_vai(audio_path, tg_path)
+    #     else:
+    #         print(
+    #             f"Warning: base_key {base_key} not found in all_metrics for VAI assignment."
+    #         )
     # Create DataFrame and save to CSV
     if all_metrics:
         df = pd.DataFrame.from_dict(all_metrics, orient="index").reset_index()
@@ -244,6 +282,7 @@ def build_csv(csv_path, audio_files=None, audio_dir=None, results_dir=None):
         print(f"Metrics saved to {csv_path}")
     else:
         print("No audio files were processed.")
+
 
 if __name__ == "__main__":
     pass
