@@ -4,7 +4,7 @@ library(dplyr)
 library(tidyr)
 source("/Users/thomas.cong/Downloads/ResearchCode/R Visualizations/theme.R")
 
-make_barplot <- function(feature, file_path, save_path){
+make_boxplot <- function(feature, file_path, save_path){
 data <- read.csv(file_path)
   # Define desired columns and find which are available in the data
   desired_cols <- c("subjid", "Status", feature, "Age", "Sex", "UPDRSIII")
@@ -155,11 +155,11 @@ ggsave(save_path, p)
 #   features <- read.csv(file)
 #   for (feature in colnames(features)){
 #     save_path <- file.path(folder, paste0(feature, "_scatterplot.png"))
-#     make_barplot(feature, file, save_path)
+#     make_boxplot(feature, file, save_path)
 #   }
 # }
 # file <- "/Users/thomas.cong/Downloads/ResearchCode/ParkCelebCode/Park_Celeb_Biomarkers.csv"
 # features <- read.csv(file)
 # for (feature in colnames(features)){
-#   make_barplot(feature, file, paste0("./ParkCelebCode/", feature, "_barplot.png"))
+#   make_boxplot(feature, file, paste0("./ParkCelebCode/", feature, "_boxplot.png"))
 # }
