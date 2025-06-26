@@ -1,10 +1,10 @@
-import parselmouth
 import numpy as np
 import pandas as pd
 from sklearn.mixture import GaussianMixture
 from sklearn.cluster import KMeans
 from scipy.spatial import ConvexHull
 from parselmouth.praat import call
+import parselmouth
 import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.signal import lfilter
@@ -392,6 +392,47 @@ def calculate_interword_pauses(sound):
         return 0
 
 
+def compute_cpp(sound):
+    """
+    Computes Cepstral Peak Prominence (CPPS) using a detailed Praat workflow.
+
+    This function first creates a PowerCepstrogram and then calculates CPPS
+    using a comprehensive set of parameters for robust analysis, based on
+    standard practices in speech analysis.
+    """
+    try:
+        # 1. Create PowerCepstrogram with standard parameters
+        power_cepstrogram = call(
+            sound,
+            "To PowerCepstrogram",
+            75,      # Pitch floor (Hz)
+            0.01,    # Time step (s)
+            5000,    # Max frequency (Hz)
+            50       # Pre-emphasis from (Hz)
+        )
+
+        # 2. Calculate CPPS with detailed parameters
+        cpps = call(
+            power_cepstrogram,
+            "Get CPPS",
+            True,      # Subtract trend before smoothing
+            0.0,       # Time averaging window (s)
+            0.0,       # Quefrency averaging window (s)
+            60,        # Peak search pitch floor (Hz)
+            330,       # Peak search pitch ceiling (Hz)
+            0.01,      # Tolerance
+            "Parabolic", # Interpolation
+            0.001,     # Trend line quefrency floor (s)
+            0.02,      # Trend line quefrency ceiling (s)
+            "straight",# Trend type
+            "Robust slow" # Fit method
+        )
+        return cpps
+    except parselmouth.PraatError as e:
+        print(f"Error computing CPP: {e}")
+        return 0
+    
+
 def calculate_audio_features(audio_path):
     """
     Calculate the audio features for a given audio file.
@@ -411,6 +452,7 @@ def calculate_audio_features(audio_path):
     data["jitter"] = calculate_jitter(sound)
     data["ppe"] = calculate_ppe(sound)
     data["avg_pause_duration"] = calculate_interword_pauses(sound)
+    data["cpp"] = compute_cpp(sound)
     # Check for NaNs or infs in feature dict
     for k, v in data.items():
         if isinstance(v, (list, np.ndarray)):
@@ -423,5 +465,5 @@ def calculate_audio_features(audio_path):
 
 if __name__ == "__main__":
     audio_path = "/Users/thomas.cong/Downloads/ResearchCode/MDVR-KCL/ReadText/PD/ID07_pd_2_0_0.wav"
-    data = calculate_audio_features(audio_path)
-    print(data)
+    sound = parselmouth.Sound(audio_path)
+    print(compute_cpp(sound))

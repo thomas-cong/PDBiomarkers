@@ -187,6 +187,7 @@ def process_audio_file(audio_path, results_dir):
         metrics["jitter_apq3"] = audio_feats["jitter"][2]
         metrics["jitter_apq5"] = audio_feats["jitter"][3]
         metrics["ppe"] = audio_feats["ppe"]
+        metrics["cpp"] = audio_feats["cpp"]
     except Exception as e:
         print(f"Error processing {filename}: {str(e)}")
         with open("./feature_list.txt", "r") as f:
@@ -246,35 +247,6 @@ def build_csv(csv_path, audio_files=None, audio_dir=None, results_dir=None):
             if r:
                 all_metrics[r["filename"]] = r
 
-    # # build text grids
-    # build_text_grids(preprocessed_dir, textgrid_dir)
-    # # calculate textgrid dependent features
-    # preprocessed_files = [
-    #     os.path.join(preprocessed_dir, f)
-    #     for f in os.listdir(preprocessed_dir)
-    #     if f.endswith(".wav")
-    # ]
-    # for audio_path in tqdm(preprocessed_files, desc="Calculating VAI"):
-    #     if "preprocessed" not in audio_path:
-    #         continue
-    #     tg_path = os.path.join(
-    #         textgrid_dir,
-    #         os.path.basename(audio_path).replace(
-    #             "_preprocessed.wav", "_alignment.TextGrid"
-    #         ),
-    #     )
-    #     base_key = (
-    #         os.path.basename(audio_path)
-    #         .replace(".wav", "")
-    #         .replace("_preprocessed", "")
-    #     )
-    #     if base_key in all_metrics:
-    #         all_metrics[base_key]["vai"] = calculate_vai(audio_path, tg_path)
-    #     else:
-    #         print(
-    #             f"Warning: base_key {base_key} not found in all_metrics for VAI assignment."
-    #         )
-    # Create DataFrame and save to CSV
     if all_metrics:
         df = pd.DataFrame.from_dict(all_metrics, orient="index").reset_index()
         df = df.rename(columns={"index": "filename"})
