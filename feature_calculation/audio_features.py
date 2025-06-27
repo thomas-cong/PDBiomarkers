@@ -1,5 +1,14 @@
 import numpy as np
 import pandas as pd
+
+# -----------------------------------------------------------------------------
+# Global defaults for silence‐/speech‐segmentation. Adjust once here to affect
+# all downstream calculations that depend on silence thresholds.
+# -----------------------------------------------------------------------------
+DEFAULT_SILENCE_DB         = -25   # dB below local peak considered silence
+DEFAULT_MIN_PAUSE_SECONDS  = 0.3   # minimum continuous silence to count as a pause
+DEFAULT_SILENCE_THRESHOLD  = 0.1   # resolution/threshold used by Praat's algorithm
+
 from sklearn.mixture import GaussianMixture
 from sklearn.cluster import KMeans
 from scipy.spatial import ConvexHull
@@ -357,39 +366,53 @@ def calculate_ppe(sound):
     return PPE
 
 
-def calculate_interword_pauses(sound):
-    """
-    Calculate the interword pauses for a given parselmouth Sound object.
+def calculate_interword_pauses(
+    sound,
+    silencedb: float = DEFAULT_SILENCE_DB,
+    min_pause: float = DEFAULT_MIN_PAUSE_SECONDS,
+    silence_threshold: float = DEFAULT_SILENCE_THRESHOLD,
+):
+    """Return the **average pause duration** (seconds).
 
-    Args:
-        sound (parselmouth.Sound): A parselmouth Sound object.
-
-    Returns:
-        list: A list of interword pause durations.
+    If Praat finds *no* silent intervals long enough to meet the criteria, the
+    function returns ``0.0`` instead of raising an error.  The thresholds can be
+    tuned via the parameters; sensible defaults are provided globally.
     """
+
+    intensity = sound.to_intensity(50)  # smoother contour
+    q99 = call(intensity, "Get quantile", 0, 0, 0.99)  # robust peak estimate
+
+    # Convert intensity to TextGrid with silence/sounding labels
+    tg = call(
+        intensity,
+        "To TextGrid (silences)",
+        silencedb - (call(intensity, "Get maximum", 0, 0, "Parabolic") - q99),
+        min_pause,
+        silence_threshold,
+        "silent",
+        "sounding",
+    )
+
+    # Extract silent intervals; handle the case where none are present
     try:
-        intensity = sound.to_intensity()
-        textgrid = call(
-            intensity, "To TextGrid (silences)", -16, 0.1, 0.1, "silent", "sounding"
-        )
-        silencetier = call(textgrid, "Extract tier", 1)
-        silencetable = call(silencetier, "Down to TableOfReal", "silent")
-        npauses = call(silencetable, "Get number of rows")
-        pause_durations = []
-        for ipause in range(npauses):
-            pause = ipause + 1
-            begin = call(silencetable, "Get value", pause, 1)
-            end = call(silencetable, "Get value", pause, 2)
-            pause_durations.append(end - begin)
-        std_pause_durations = np.std(pause_durations)
-        pause_durations_inlying = [
-            x for x in pause_durations if x < std_pause_durations * 3
-        ]
-        mean = np.mean(pause_durations_inlying)
-        return mean
-    except:
-        print("No silence detected in audio file, returning 0")
-        return 0
+        silence_tier = call(tg, "Extract tier", 1)
+        silence_table = call(silence_tier, "Down to TableOfReal", "silent")
+        n = call(silence_table, "Get number of rows")
+    except parselmouth.PraatError:
+        # No silent intervals detected
+        return 0.0
+
+    if n == 0:
+        return 0.0
+
+    pauses = [
+        call(silence_table, "Get value", i + 1, 2) - call(silence_table, "Get value", i + 1, 1)
+        for i in range(n)
+    ]
+
+    # Remove extreme outliers (> 3 SD)
+    pauses = [p for p in pauses if p < np.mean(pauses) + 3 * np.std(pauses)]
+    return float(np.mean(pauses)) if pauses else 0.0
 
 
 def compute_cpp(sound):
@@ -433,7 +456,10 @@ def compute_cpp(sound):
         return 0
     
 
-def calculate_audio_features(audio_path):
+def calculate_audio_features(audio_path,
+                            silencedb: float = DEFAULT_SILENCE_DB,
+                            min_pause: float = DEFAULT_MIN_PAUSE_SECONDS,
+                            silence_threshold: float = DEFAULT_SILENCE_THRESHOLD):
     """
     Calculate the audio features for a given audio file.
 
@@ -451,7 +477,13 @@ def calculate_audio_features(audio_path):
     data["shimmer"] = calculate_shimmer(sound)
     data["jitter"] = calculate_jitter(sound)
     data["ppe"] = calculate_ppe(sound)
-    data["avg_pause_duration"] = calculate_interword_pauses(sound)
+    # Pause features depend on silence detection parameters – pass them through
+    data["avg_pause_duration"] = calculate_interword_pauses(
+        sound,
+        silencedb=silencedb,
+        min_pause=min_pause,
+        silence_threshold=silence_threshold,
+    )
     data["cpp"] = compute_cpp(sound)
     # Check for NaNs or infs in feature dict
     for k, v in data.items():

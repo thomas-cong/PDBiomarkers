@@ -191,7 +191,7 @@ make_paired_boxplot <- function(feature, file_path, save_path, grouping_feature,
     geom_line(aes(group = .data[[grouping_feature]]), alpha = 0.4, color = "gray") +
     facet_wrap(~ Status, scales = "free_y") + # Use free_y for better visualization if scales differ
     labs(
-      title = paste("Comparison of", feature, "between First and Last Sessions"),
+      title = paste("Comparison of", feature, "between First and Last Groups"),
       subtitle = "Faceted by Status, paired by Subject",
       x = "Session",
       y = feature,
