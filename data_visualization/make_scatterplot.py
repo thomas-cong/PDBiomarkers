@@ -36,25 +36,30 @@ def feature_comparison_scatterplot(df1, df2, feature):
     feature_vector_1 = df1_feature_vector[valid_mask]
     feature_vector_2 = df2_feature_vector[valid_mask]
 
-    # Calculate Pearson's correlation coefficient and p-value
-    try:
-        pearson_corr, p_value = stats.pearsonr(feature_vector_1, feature_vector_2)
-        print(f"Pearson correlation: {pearson_corr:.3f}, p-value: {p_value:.3f}")
-    except Exception as e:
-        print(f"Error calculating Pearson correlation: {e}")
-        pearson_corr, p_value = np.nan, np.nan
+    # Check if there are enough data points for correlation calculation
+    if len(feature_vector_1) >= 2:
+        # Calculate Pearson's correlation coefficient and p-value
+        try:
+            pearson_corr, p_value = stats.pearsonr(feature_vector_1, feature_vector_2)
+            print(f"Pearson correlation: {pearson_corr:.3f}, p-value: {p_value:.3f}")
+        except ValueError as e:
+            print(f"Error calculating Pearson correlation: {e}")
+            pearson_corr, p_value = np.nan, np.nan
 
-    # Calculate R-squared (coefficient of determination)
-    try:
-        slope, intercept, r_value, p_value, std_err = stats.linregress(
-            feature_vector_1, feature_vector_2
-        )
-        r_squared = r_value**2
-        print(f"R-squared: {r_squared:.3f}, p-value: {p_value:.3f}")
-    except Exception as e:
-        print(f"Error calculating linear regression: {e}")
-        slope, intercept, r_value, p_value, std_err = [np.nan] * 5
-        r_squared = np.nan
+        # Calculate R-squared (coefficient of determination)
+        try:
+            slope, intercept, r_value, p_value, std_err = stats.linregress(
+                feature_vector_1, feature_vector_2
+            )
+            r_squared = r_value**2
+            print(f"R-squared: {r_squared:.3f}, p-value: {p_value:.3f}")
+        except ValueError as e:
+            print(f"Error calculating linear regression: {e}")
+            slope, intercept, r_value, p_value, std_err = [np.nan] * 5
+            r_squared = np.nan
+    else:
+        print("Not enough data points (less than 2) to calculate correlation.")
+        pearson_corr, p_value, r_squared = np.nan, np.nan, np.nan
 
     # Add correlation and R-squared values as text annotation
     ax.annotate(

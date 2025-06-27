@@ -4,8 +4,7 @@ library(dplyr)
 library(tidyr)
 source("/Users/thomas.cong/Downloads/ResearchCode/R Visualizations/theme.R")
 
-make_boxplot <- function(feature, file_path, save_path){
-data <- read.csv(file_path)
+make_boxplot <- function(data, feature, save_path){
   # Define desired columns and find which are available in the data
   desired_cols <- c("subjid", "Status", feature, "Age", "Sex", "UPDRSIII")
   available_cols <- intersect(desired_cols, colnames(data))
@@ -42,9 +41,9 @@ data <- read.csv(file_path)
     
     # Reshape data to wide format for paired test
     wide_data <- feature_vectors %>%
-      select(pair_id, Status, all_of(feature)) %>%
-      tidyr::pivot_wider(names_from = Status, 
-                         values_from = all_of(feature),
+      select("pair_id", "Status", feature) %>%
+      tidyr::pivot_wider(names_from = "Status", 
+                         values_from = feature,
                          values_fn = function(x) mean(x, na.rm = TRUE))
     
     # Perform paired t-test if both ON and OFF columns exist after pivoting
@@ -103,7 +102,20 @@ data <- read.csv(file_path)
     )
   } else {
     # If not paired, just show jittered points
-    p <- p + geom_jitter(width = 0.2, height = 0, alpha = 0.7, size = 3)
+    jitter_aes <- aes()
+    if ("UPDRSIII" %in% colnames(feature_vectors)) {
+      jitter_aes$colour <- as.name("UPDRSIII")
+    }
+    if ("Sex" %in% colnames(feature_vectors)) {
+      jitter_aes$shape <- as.name("Sex")
+    }
+    p <- p + geom_jitter(
+      mapping = jitter_aes,
+      width = 0.2,
+      height = 0,
+      alpha = 0.7,
+      size = 3
+    )
   }
 
   # Add scales and theme conditionally
@@ -120,7 +132,7 @@ data <- read.csv(file_path)
      p <- p + scale_shape_manual(
        values = c("M" = 16, "F" = 17), # Example: circles for M, triangles for F
        na.translate = TRUE,
-       na.value     = 1 # Default shape for NA
+       na.value     = 16 # Default shape for NA (solid circle)
      )
   }
 
@@ -145,21 +157,70 @@ data <- read.csv(file_path)
 
 ggsave(save_path, p)
 }
-# for (file in list.files("./2157-Generated-Data/Clinical/Regular/",
-#                         pattern = "\\.csv$",
-#                         full.names = TRUE,
-#                         ignore.case = TRUE)){
-#   folder <- gsub("\\.csv$", "", file, ignore.case = TRUE)
-#   folder <- gsub("Regular", "Regular/Scatterplots", folder)
-#   dir.create(folder, recursive = TRUE, showWarnings = FALSE)
-#   features <- read.csv(file)
-#   for (feature in colnames(features)){
-#     save_path <- file.path(folder, paste0(feature, "_scatterplot.png"))
-#     make_boxplot(feature, file, save_path)
-#   }
-# }
-# file <- "/Users/thomas.cong/Downloads/ResearchCode/ParkCelebCode/Park_Celeb_Biomarkers.csv"
-# features <- read.csv(file)
-# for (feature in colnames(features)){
-#   make_boxplot(feature, file, paste0("./ParkCelebCode/", feature, "_boxplot.png"))
-# }
+
+# --- Main script execution ---
+
+# Define paths for input data and output plots
+input_dir <- "/Users/thomas.cong/Downloads/ResearchCode/2157-Generated-Data/Clinical/Regular"
+output_dir <- file.path(input_dir, "Boxplot")
+
+# Create the output directory if it doesn't already exist
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir, recursive = TRUE)
+  print(paste("Created directory:", output_dir))
+}
+
+# Get a list of all CSV files in the input directory
+csv_files <- list.files(path = input_dir, pattern = "\\.csv$", full.names = TRUE)
+
+# Check if any CSV files were found
+if (length(csv_files) == 0) {
+  stop("No CSV files found in the specified directory.")
+}
+
+print(paste("Found", length(csv_files), "CSV files to process."))
+
+# Loop over each CSV file found
+for (file_path in csv_files) {
+  
+  base_name <- basename(file_path)
+  print(paste("Processing file:", base_name))
+  
+  # Read the data from the CSV file
+  data <- read.csv(file_path, check.names = FALSE)
+  
+  # Define columns that are not features to be plotted
+  non_feature_cols <- c("subjid", "Status", "Age", "Sex", "UPDRSIII", "pair_id")
+  
+  # Identify feature columns by excluding the non-feature ones
+  feature_names <- setdiff(colnames(data), non_feature_cols)
+  
+  # Prepare a label for the plot from the CSV filename
+  plot_label_name <- gsub("2157-Clinical-", "", base_name)
+  plot_label_name <- gsub("\\.csv$", "", plot_label_name) # More robustly remove .csv
+  
+  # Loop over each identified feature column
+  for (feature in feature_names) {
+    
+    # Sanitize feature name for use in filename by replacing special characters with underscores
+    sanitized_feature <- gsub("[^A-Za-z0-9_.-]+", "_", feature)
+    
+    # Construct the filename for the output plot
+    save_filename <- paste0(sanitized_feature, "_", plot_label_name, ".png")
+    save_path <- file.path(output_dir, save_filename)
+    
+    print(paste("  - Generating boxplot for feature:", feature))
+    
+    # Use tryCatch to handle any errors during plot creation gracefully
+        tryCatch({
+      make_boxplot(data = data, feature = feature, save_path = save_path)
+    }, error = function(e) {
+      # Print an informative error message if plot generation fails
+      print(paste("    ERROR: Failed to generate plot for feature '", feature, 
+                  "' from file '", base_name, "'. Reason: ", e, sep=""))
+    })
+  }
+}
+
+print("--- Script finished ---")
+
